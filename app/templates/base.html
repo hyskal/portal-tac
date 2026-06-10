@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal Acadêmico</title>
+    
+    <!-- PWA META TAGS -->
+    <meta name="theme-color" content="#ffffff"> <!-- Cor da barra do navegador (Chrome/Android) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- Bootstrap & FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+
+    <style>
+        :root { --app-bottom-height: 65px; }
+        body { background-color: #f8f9fa; padding-bottom: 0; }
+        .app-padding-bottom { padding-bottom: var(--app-bottom-height) !important; }
+        
+        /* Oculta navbar em telas grandes se desejado ou mantém padrão */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR GLOBAL (Só aparece se logado ou na home) -->
+    {% if current_user.is_authenticated or request.endpoint in ['main.index', 'auth.login'] %}
+    <nav class="navbar navbar-dark bg-dark shadow-sm mb-0">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('main.index') }}">
+                <i class="fas fa-graduation-cap"></i> Portal
+            </a>
+            {% if current_user.is_authenticated %}
+            <div class="d-flex">
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-light me-2">Admin</a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">Sair</a>
+            </div>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-sm btn-outline-secondary">Login</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(reg => console.log('SW registrado!', reg))
+                    .catch(err => console.log('SW falhou:', err));
+            });
+        }
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

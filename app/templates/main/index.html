@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- MODO PROFESSOR (LOGADO): Vê tudo -->
+{% if current_user.is_authenticated %}
+    <div class="text-center py-4">
+        <h1 class="h3 fw-bold mb-3">🎓 Portal do Professor</h1>
+        <p class="text-muted">Selecione uma turma para visualizar como aluno.</p>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary mb-4">
+            <i class="fas fa-cog"></i> Ir para o Painel Admin
+        </a>
+    </div>
+
+    <div class="row g-3">
+        {% for turma in turmas %}
+        <div class="col-12 col-md-6 col-lg-4">
+            <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}" class="text-decoration-none text-dark"> 
+                <div class="card shadow-sm card-post h-100 border-start border-5" style="border-color: {{ turma.cor }} !important;">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold">{{ turma.nome }}</h5>
+                            <small class="text-muted">Acessar Área &rarr;</small>
+                        </div>
+                        <div class="bg-light rounded-circle p-3">
+                            <i class="fas fa-users fa-lg" style="color: {{ turma.cor }}"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% else %}
+        <div class="col-12 text-center mt-5">
+            <div class="alert alert-info">Nenhuma turma cadastrada.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+<!-- MODO ALUNO (PÚBLICO) -->
+{% else %}
+    <!-- SCRIPT DE REDIRECIONAMENTO INTELIGENTE -->
+    <script>
+        // Verifica se o aluno já tem uma turma salva no celular
+        const savedClassSlug = localStorage.getItem('portal_turma_slug');
+        
+        // Se tiver turma salva E não estivermos em loop de redirecionamento
+        if (savedClassSlug) {
+            // Mostra um carregando simples enquanto redireciona
+            document.write('<div style="height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;color:#666;">Redirecionando para sua turma...</div>');
+            window.location.href = '/' + savedClassSlug;
+        }
+    </script>
+
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="col-md-6 text-center">
+            <div class="mb-4">
+                <span class="fa-stack fa-4x">
+                    <i class="fas fa-circle fa-stack-2x text-light"></i>
+                    <i class="fas fa-graduation-cap fa-stack-1x text-primary"></i>
+                </span>
+            </div>
+            
+            <h1 class="h2 fw-bold mb-3">Bem-vindo ao Portal</h1>
+            
+            <div class="card border-0 shadow-sm bg-light p-4 mt-4">
+                <p class="lead mb-0" style="font-size: 1.1rem;">
+                    Se é sua primeira vez, utilize o <strong>link enviado pelo professor</strong>. <br>
+                    Na próxima, levaremos você direto para sua turma.
+                </p>
+            </div>
+
+            <div class="mt-5">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-link text-muted btn-sm">
+                    <i class="fas fa-lock"></i> Acesso Professor
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}

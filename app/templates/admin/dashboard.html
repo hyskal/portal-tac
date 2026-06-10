@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 text-dark"><i class="fas fa-toolbox text-secondary"></i> Painel do Professor</h2>
+    <div class="d-flex gap-2">
+        {% if tem_horario %}
+        <button class="btn btn-info text-white shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVerHorario">
+            <i class="fas fa-calendar-alt"></i> Ver Horário
+        </button>
+        {% endif %}
+        <a href="{{ url_for('admin.gerenciar_post') }}" class="btn btn-primary shadow-sm">
+            <i class="fas fa-pen"></i> Novo Post
+        </a>
+        <div class="btn-group">
+            <button class="btn btn-success shadow-sm dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fas fa-plus"></i> Cadastro
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalTurma">Nova Turma</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalDisciplina">Nova Disciplina</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalLink">Novo Link</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- UPLOAD DE HORÁRIO -->
+<div class="card p-3 mb-4 bg-light border-dashed">
+    <form action="{{ url_for('admin.upload_horario') }}" method="POST" enctype="multipart/form-data" class="row g-2 align-items-center">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-3 small fw-bold text-muted">Grade de Horários:</div>
+        <div class="col-md-6"><input type="file" name="file" class="form-control form-control-sm" accept="image/*" required></div>
+        <div class="col-md-3"><button type="submit" class="btn btn-dark btn-sm w-100">Atualizar Imagem</button></div>
+    </form>
+</div>
+
+<!-- FILTROS -->
+<div class="card p-3 mb-4 bg-white border shadow-sm">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Filtrar por Turma</label>
+            <select name="turma_id" class="form-select form-select-sm">
+                <option value="">Todas as Turmas</option>
+                {% for turma in turmas %}
+                <option value="{{ turma.id }}" {% if request.args.get('turma_id')|int == turma.id %}selected{% endif %}>{{ turma.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Filtrar por Disciplina</label>
+            <select name="disciplina_id" class="form-select form-select-sm">
+                <option value="">Todas as Disciplinas</option>
+                {% for disc in disciplinas %}<option value="{{ disc.id }}" {% if request.args.get('disciplina_id')|int == disc.id %}selected{% endif %}>{{ disc.nome }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Status</label>
+            <select name="status" class="form-select form-select-sm">
+                <option value="ativos">Ativos</option>
+                <option value="rascunho" {% if request.args.get('status') == 'rascunho' %}selected{% endif %}>Rascunhos</option>
+                <option value="lixeira" {% if request.args.get('status') == 'lixeira' %}selected{% endif %}>Lixeira</option>
+            </select>
+        </div>
+        <div class="col-md-2"><button type="submit" class="btn btn-dark btn-sm w-100"><i class="fas fa-filter"></i> Filtrar</button></div>
+        <div class="col-md-1"><a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm w-100"><i class="fas fa-times"></i></a></div>
+    </form>
+</div>
+
+<!-- ABAS -->
+<ul class="nav nav-tabs mb-3" id="adminTabs">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#lista">Posts</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#calendario">Calendário</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#biblioteca">Biblioteca</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#turmas">Turmas</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#disciplinas">Disciplinas</button></li>
+</ul>
+
+<div class="tab-content bg-white border border-top-0 p-3 shadow-sm rounded-bottom">
+  <div class="tab-pane fade show active" id="lista">
+      <div class="table-responsive">
+          <table class="table table-hover align-middle">
+              <thead><tr><th>Título</th><th>Turmas & Disciplina</th><th>Data</th><th class="text-end">Ações</th></tr></thead>
+              <tbody>
+                  {% for post in posts.items %}
+                  <tr>
+                      <td><div class="fw-bold">{{ post.titulo }}</div><div class="small text-muted">{{ post.tipo|upper }} {% if post.is_draft %}| <span class="text-danger">RASCUNHO</span>{% endif %}</div></td>
+                      <td>
+                        {% if post.disciplina %}<span class="badge mb-1" style="background-color: {{ post.disciplina.cor }}">{{ post.disciplina.nome }}</span><br>{% endif %}
+                        {% for t in post.turmas %}
+                            <span class="badge rounded-pill text-white mb-1" style="background-color: {{ t.cor }}">{{ t.nome }}</span>
+                        {% endfor %}
+                      </td>
+                      <td><small>{{ post.scheduled_at.strftime('%d/%m/%Y') }}</small></td>
+                      <td class="text-end">
+                          <div class="btn-group">
+                              <button class="btn btn-sm btn-outline-dark" onclick="navigator.clipboard.writeText('{{ url_for('main.ver_post', id=post.id, _external=True) }}').then(() => alert('Link copiado!'))"><i class="fas fa-link"></i></button>
+                              <a href="{{ url_for('admin.gerenciar_post', id=post.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+                              <a href="{{ url_for('admin.clonar_post', id=post.id) }}" class="btn btn-sm btn-outline-warning"><i class="fas fa-copy"></i></a>
+                              <a href="{{ url_for('admin.delete_post', id=post.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir?')"><i class="fas fa-trash"></i></a>
+                          </div>
+                      </td>
+                  </tr>
+                  {% endfor %}
+              </tbody>
+          </table>
+      </div>
+  </div>
+  <div class="tab-pane fade" id="calendario"><div id='calendar-admin' style="min-height: 500px;"></div></div>
+  <div class="tab-pane fade" id="biblioteca">
+    <table class="table align-middle">
+        <thead><tr><th>Título</th><th>URL</th><th>Turmas</th><th class="text-end">Ações</th></tr></thead>
+        <tbody>
+            {% for link in links %}
+            <tr>
+                <td>{{ link.titulo }}</td>
+                <td><small>{{ link.url }}</small></td>
+                <td>{% for t in link.turmas %}<span class="badge border text-dark" style="border-left: 3px solid {{ t.cor }} !important;">{{ t.nome }}</span> {% endfor %}</td>
+                <td class="text-end"><a href="{{ url_for('admin.delete_link', id=link.id) }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+  </div>
+  <div class="tab-pane fade" id="turmas">
+    <table class="table align-middle">
+        <thead><tr><th>Nome</th><th>Slug</th><th>Cor Atribuída</th><th class="text-end">Ações</th></tr></thead>
+        <tbody>
+            {% for t in turmas %}
+            <tr>
+                <td class="fw-bold">{{ t.nome }}</td>
+                <td><code>{{ t.slug }}</code></td>
+                <td><span class="badge text-white" style="background-color: {{ t.cor }}; padding: 8px 12px;">{{ t.cor }}</span></td>
+                <td class="text-end"><a href="{{ url_for('admin.delete_turma', id=t.id) }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+  </div>
+  <div class="tab-pane fade" id="disciplinas">
+    <table class="table align-middle">
+        <thead><tr><th>Nome</th><th>Amostra da Cor</th><th class="text-end">Ações</th></tr></thead>
+        <tbody>
+            {% for d in disciplinas %}
+            <tr>
+                <td class="fw-bold">{{ d.nome }}</td>
+                <td><span class="badge text-white" style="background-color:{{ d.cor }}">{{ d.cor }}</span></td>
+                <td class="text-end"><a href="{{ url_for('admin.delete_disciplina', id=d.id) }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL HORÁRIO -->
+<div class="modal fade" id="modalVerHorario" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header border-0"><h5 class="modal-title">📅 Meu Horário</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center p-0"><img src="{{ url_for("static", filename="uploads/horario_professor.png") }}?t={{ now.timestamp() }}" class="img-fluid rounded" alt="Horário"></div></div></div>
+</div>
+
+<!-- MODAIS DE CADASTRO -->
+<div class="modal fade" id="modalTurma" tabindex="-1"><div class="modal-dialog"><form action="{{ url_for('admin.nova_turma') }}" method="POST" class="modal-content"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="modal-header bg-success text-white"><h5>Nova Turma</h5></div><div class="modal-body"><label class="small fw-bold">Nome da Turma:</label><input type="text" name="nome" class="form-control mb-2" placeholder="Ex: 1TACM1" required><label class="small fw-bold">Slug (Link):</label><input type="text" name="slug" class="form-control mb-2" placeholder="Ex: 1tacm1" required><label class="small fw-bold">Cor de Identificação:</label><input type="color" name="cor" class="form-control" value="#2ecc71"></div><div class="modal-footer"><button type="submit" class="btn btn-success">Salvar Turma</button></div></form></div></div>
+<div class="modal fade" id="modalDisciplina" tabindex="-1"><div class="modal-dialog"><form action="{{ url_for('admin.nova_disciplina') }}" method="POST" class="modal-content"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="modal-header bg-info text-white"><h5>Nova Disciplina</h5></div><div class="modal-body"><label class="small fw-bold">Nome da Matéria:</label><input type="text" name="nome" class="form-control mb-3" placeholder="Ex: Matemática" required><label class="small fw-bold">Cor da Tag:</label><input type="color" name="cor" class="form-control" value="#6c757d"></div><div class="modal-footer"><button type="submit" class="btn btn-info text-white">Salvar Disciplina</button></div></form></div></div>
+<div class="modal fade" id="modalLink" tabindex="-1"><div class="modal-dialog"><form action="{{ url_for('admin.novo_link') }}" method="POST" class="modal-content"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="modal-header bg-primary text-white"><h5>Novo Link</h5></div><div class="modal-body"><input type="text" name="titulo" class="form-control mb-3" placeholder="Título" required><input type="text" name="url" class="form-control mb-3" placeholder="URL" required><label class="fw-bold small">Vincular a Turmas:</label><div class="card p-2" style="max-height:150px;overflow-y:auto;">{% for t in turmas %}<div class="form-check"><input class="form-check-input" type="checkbox" name="turmas" value="{{ t.id }}" id="lt{{ t.id }}"><label class="form-check-label" for="lt{{ t.id }}">{{ t.nome }}</label></div>{% endfor %}</div></div><div class="modal-footer"><button type="submit" class="btn btn-primary">Salvar Link</button></div></form></div></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar-admin');
+    if(calendarEl) {
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth', locale: 'pt-br', events: '/api/eventos-calendario', height: 'auto'
+        });
+        document.querySelector('button[data-bs-target="#calendario"]').addEventListener('shown.bs.tab', function () { calendar.render(); });
+    }
+  });
+</script>
+{% endblock %}
