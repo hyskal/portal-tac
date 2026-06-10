@@ -1,116 +1,43 @@
 {% extends "base.html" %}
 
-{% block content %}
-<!-- IMPORTANDO FONTE E ESTILOS MODERNOS -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+{% block title %}{{ post.titulo }} · Portal Acadêmico{% endblock %}
 
+{% block head_extra %}
 <style>
-    :root {
-        --bg-color: #f4f6f8;
-        --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
-        --nav-height: 60px;
-    }
-
-    body {
-        background-color: var(--bg-color);
-        font-family: 'Inter', sans-serif;
-        color: #2d3436;
-    }
-
-    /* Esconde navbar padrão no mobile */
-    @media (max-width: 991px) {
-        .navbar-dark { display: none !important; }
-        body { padding-bottom: 20px; }
-    }
-
-    /* HEADER GLASSMORPHISM */
-    .glass-header {
-        position: sticky; top: 0; z-index: 1020;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        padding: 12px 0;
-    }
-
-    /* CARD DE LEITURA */
-    .read-card {
-        background: white;
-        border-radius: 25px;
-        box-shadow: var(--card-shadow);
-        border: none;
-        overflow: hidden;
-        margin-top: 20px;
-    }
-
-    /* TAGS */
-    .post-tag {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        padding: 6px 12px;
-        border-radius: 10px;
-        letter-spacing: 0.5px;
-        display: inline-block;
-    }
-
-    /* ANEXO VISUAL */
-    .attachment-box {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 15px;
-        padding: 15px;
-        transition: transform 0.2s;
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        align-items: center;
-    }
-    .attachment-box:hover {
-        background: #fff;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-        border-color: #dee2e6;
-    }
-    
-    /* BOTÃO SHARE (Topo) */
-    .btn-icon-share {
-        background: transparent;
-        border: none;
-        color: #2c3e50;
-        font-size: 1.2rem;
-        padding: 5px;
-        cursor: pointer;
-        transition: color 0.2s;
-    }
-    .btn-icon-share:hover { color: #3498db; }
+    @media (max-width: 991px) { .navbar-portal { display: none !important; } body { padding-bottom: 24px; } }
 </style>
+{% endblock %}
+
+{% block content %}
 
 <!-- 1. HEADER MOBILE COM SHARE -->
-<div class="glass-header d-lg-none">
+<div class="glass-header d-lg-none py-2">
     <div class="container d-flex justify-content-between align-items-center">
-        
+
         <!-- Esquerda: Voltar -->
-        <a href="{% if turma_contexto %}{{ url_for('main.ver_turma', slug=turma_contexto.slug) }}{% else %}{{ url_for('main.index') }}{% endif %}" 
+        <a href="{% if turma_contexto %}{{ url_for('main.ver_turma', slug=turma_contexto.slug) }}{% else %}{{ url_for('main.index') }}{% endif %}"
            class="text-dark text-decoration-none fw-bold d-flex align-items-center" style="width: 40px;">
             <i class="fas fa-chevron-left fs-5"></i>
         </a>
-        
+
         <!-- Centro: Título -->
         <div class="text-center">
-            <span class="fw-bold text-uppercase small text-muted" style="font-size: 0.7rem; letter-spacing: 1px;">Visualização</span>
+            <span class="fw-bold text-uppercase small text-muted" style="font-size: 0.7rem; letter-spacing: 1px;">
+                {{ turma_contexto.nome if turma_contexto else 'Visualização' }}
+            </span>
         </div>
 
-        <!-- Direita: SHARE (NOVO) -->
+        <!-- Direita: SHARE -->
         <div style="width: 40px; text-align: right;">
-            <button class="btn-icon-share" onclick="sharePost()">
-                <i class="fas fa-share-nodes"></i>
+            <button class="btn btn-sm border-0 text-dark" onclick="sharePost()" aria-label="Compartilhar">
+                <i class="fas fa-share-nodes fs-5"></i>
             </button>
         </div>
     </div>
 </div>
 
 <div class="container mb-5">
-    
+
     <!-- Breadcrumb Desktop -->
     <nav aria-label="breadcrumb" class="d-none d-lg-block mt-4">
         <ol class="breadcrumb">
@@ -126,50 +53,54 @@
 
     <div class="row justify-content-center">
         <div class="col-lg-9">
-            
+
             <div class="read-card p-4 p-lg-5">
-                
+
                 <!-- HEADER DO POST -->
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     {% if post.disciplina %}
-                        <span class="post-tag text-white" style="background-color: {{ post.disciplina.cor }}">
+                        <span class="card-tag text-white" style="background-color: {{ post.disciplina.cor }}">
                             {{ post.disciplina.nome }}
                         </span>
                     {% endif %}
 
                     {% if post.tipo == 'atividade' %}
-                        <span class="post-tag bg-danger text-white">Atividade</span>
+                        <span class="card-tag tag-atividade">📋 Atividade</span>
                     {% elif post.tipo == 'material' %}
-                        <span class="post-tag bg-info text-white">Material</span>
+                        <span class="card-tag tag-material">📎 Material</span>
                     {% else %}
-                        <span class="post-tag bg-light text-secondary border">Aviso</span>
+                        <span class="card-tag tag-aviso">📢 Aviso</span>
                     {% endif %}
                 </div>
 
                 <div class="d-flex justify-content-between align-items-start">
                     <h1 class="fw-bold mb-3 display-6" style="letter-spacing: -0.5px;">{{ post.titulo }}</h1>
-                    
-                    <!-- Botão Share Desktop (Só aparece em telas grandes) -->
+
+                    <!-- Botão Share Desktop -->
                     <button class="btn btn-light rounded-circle shadow-sm d-none d-lg-block" onclick="sharePost()" title="Compartilhar">
                         <i class="fas fa-share-nodes"></i>
                     </button>
                 </div>
 
-                <div class="d-flex align-items-center text-muted mb-4 pb-4 border-bottom">
-                    <div class="d-flex align-items-center me-4">
+                <div class="d-flex align-items-center flex-wrap gap-3 text-muted mb-4 pb-4 border-bottom">
+                    <div class="d-flex align-items-center">
                         <i class="far fa-calendar-alt me-2"></i>
                         <small class="fw-bold">{{ post.scheduled_at.strftime('%d/%m/%Y') }}</small>
                     </div>
+                    <small class="fw-bold"><i class="far fa-clock me-1"></i>{{ post.conteudo|reading_time }}</small>
                     {% if post.prazo %}
                         <div class="d-flex align-items-center text-danger bg-danger-subtle px-2 py-1 rounded">
                             <i class="fas fa-exclamation-circle me-2"></i>
                             <small class="fw-bold">Entrega: {{ post.prazo.strftime('%d/%m às %H:%M') }}</small>
                         </div>
                     {% endif %}
+                    <div class="ms-auto">
+                        {% include 'main/partials/like_button.html' %}
+                    </div>
                 </div>
 
                 <!-- CONTEÚDO DO TEXTO -->
-                <div class="content-body mb-5" style="font-size: 1.15rem; line-height: 1.8; color: #4a4a4a;">
+                <div class="content-body mb-5">
                     {{ post.conteudo|safe }}
                 </div>
 
@@ -189,7 +120,7 @@
                             {% if post.arquivo_formato == 'pdf' %}
                                 <i class="fas fa-file-pdf fa-xl text-danger"></i>
                             {% elif post.arquivo_formato in ['jpg', 'png', 'jpeg'] %}
-                                <i class="fas fa-file-image fa-xl text-primary"></i>
+                                <i class="fas fa-file-image fa-xl" style="color: var(--accent);"></i>
                             {% else %}
                                 <i class="fas fa-file-alt fa-xl text-secondary"></i>
                             {% endif %}
@@ -204,8 +135,29 @@
                     </a>
                 {% endif %}
 
-                <!-- Espaço vazio no rodapé (Botão antigo removido) -->
-                <div class="mb-4"></div>
+                <!-- CHAMADO DE DÚVIDA -->
+                {% if post.permite_chamado %}
+                <div id="chamado-area-{{ post.id }}" class="mt-4">
+                    {% if chamado_enviado|default(false) %}
+                        {% include 'main/partials/chamado_sucesso.html' %}
+                    {% elif abrir_chamado|default(false) %}
+                        {% include 'main/partials/chamado_form.html' %}
+                    {% else %}
+                        <div class="chamado-box d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">Ficou com dúvida nesse conteúdo?</h6>
+                                <p class="small text-muted mb-0">Pergunte direto ao professor — sem precisar de login.</p>
+                            </div>
+                            <button class="btn btn-chamado"
+                                    hx-get="{{ url_for('main.chamado_form', id=post.id) }}"
+                                    hx-target="#chamado-area-{{ post.id }}"
+                                    hx-swap="innerHTML">
+                                💬 Tenho uma dúvida
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endif %}
 
             </div>
         </div>
@@ -215,9 +167,9 @@
 <script>
     // LÓGICA DE COMPARTILHAMENTO PROFISSIONAL
     function sharePost() {
-        const title = "{{ post.titulo }}";
+        const title = {{ post.titulo|tojson }};
         const url = window.location.href;
-        
+
         // Monta o texto formatado profissional
         const text = `🎓 *Portal Acadêmico*\n\n📢 *${title}*\n\n🗓️ Postado em: {{ post.scheduled_at.strftime('%d/%m/%Y') }}\n🔗 Acesse aqui:`;
 

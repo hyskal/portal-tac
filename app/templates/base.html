@@ -2,69 +2,133 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portal Acadêmico</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}Portal Acadêmico{% endblock %}</title>
+
     <!-- PWA META TAGS -->
-    <meta name="theme-color" content="#ffffff"> <!-- Cor da barra do navegador (Chrome/Android) -->
+    <meta name="theme-color" content="#4F46E5">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    
+
+    <!-- Tipografia -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Bootstrap & FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
 
+    <!-- HTMX -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+
     <style>
-        :root { --app-bottom-height: 65px; }
-        body { background-color: #f8f9fa; padding-bottom: 0; }
+        :root {
+            --bg: #F0F2F5;
+            --surface: #FFFFFF;
+            --surface-2: #F7F8FA;
+            --border: #E4E7EC;
+            --text-primary: #111827;
+            --text-muted: #6B7280;
+            --accent: #4F46E5;   /* índigo — cor principal */
+            --accent-hover: #4338CA;
+            --danger: #EF4444;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            --app-bottom-height: 65px;
+        }
         .app-padding-bottom { padding-bottom: var(--app-bottom-height) !important; }
-        
-        /* Oculta navbar em telas grandes se desejado ou mantém padrão */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head_extra %}{% endblock %}
 </head>
-<body>
+<!-- Todas as requisições HTMX enviam o token CSRF -->
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+
+    <div id="top-progress"></div>
 
     <!-- NAVBAR GLOBAL (Só aparece se logado ou na home) -->
     {% if current_user.is_authenticated or request.endpoint in ['main.index', 'auth.login'] %}
-    <nav class="navbar navbar-dark bg-dark shadow-sm mb-0">
+    <nav class="navbar navbar-portal navbar-expand">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('main.index') }}">
-                <i class="fas fa-graduation-cap"></i> Portal
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
+                <i class="fas fa-graduation-cap me-1"></i> Portal
             </a>
             {% if current_user.is_authenticated %}
-            <div class="d-flex">
-                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-light me-2">Admin</a>
-                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">Sair</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-soft">
+                    <i class="fas fa-gauge-high me-1 d-none d-sm-inline"></i>Admin
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-soft text-danger">Sair</a>
+                <span class="avatar-initial d-none d-sm-inline-flex" style="width:34px;height:34px;font-size:.85rem;">
+                    {{ current_user.username[0]|upper }}
+                </span>
             </div>
             {% else %}
-                <a href="{{ url_for('auth.login') }}" class="btn btn-sm btn-outline-secondary">Login</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-sm btn-soft">
+                    <i class="fas fa-lock me-1"></i>Professor
+                </a>
             {% endif %}
         </div>
     </nav>
     {% endif %}
 
-    <div class="container mt-3">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-    </div>
-
     {% block content %}{% endblock %}
 
+    <!-- TOASTS -->
+    <div id="toast-area" aria-live="polite"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
+    <script>
+        // ---------- Toast system ----------
+        function showToast(message, type) {
+            const area = document.getElementById('toast-area');
+            const el = document.createElement('div');
+            el.className = 'toast-pop ' + (type || 'info');
+            el.innerHTML = '<span class="toast-dot"></span><span></span>';
+            el.lastElementChild.textContent = message;
+            area.appendChild(el);
+            setTimeout(() => {
+                el.classList.add('saindo');
+                el.addEventListener('animationend', () => el.remove(), { once: true });
+            }, 3500);
+        }
+
+        // Eventos disparados pelo servidor via header HX-Trigger
+        document.body.addEventListener('showToast', function (e) {
+            const d = e.detail || {};
+            showToast(d.message || 'Feito!', d.type || 'success');
+        });
+
+        // Flash messages do Flask viram toasts
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                document.addEventListener('DOMContentLoaded', function () {
+                    showToast({{ message|tojson }}, {{ category|tojson }});
+                });
+            {% endfor %}
+        {% endwith %}
+
+        // ---------- Barra de progresso global do HTMX ----------
+        document.addEventListener('htmx:beforeRequest', () => document.body.classList.add('htmx-em-voo'));
+        document.addEventListener('htmx:afterRequest', () => {
+            const bar = document.getElementById('top-progress');
+            bar.style.width = '100%';
+            setTimeout(() => {
+                document.body.classList.remove('htmx-em-voo');
+                bar.style.width = '0';
+            }, 250);
+        });
+    </script>
+
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -75,7 +139,7 @@
             });
         }
     </script>
-    
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

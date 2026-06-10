@@ -1,0 +1,42 @@
+{# Formulário de chamado de dúvida — carregado via HTMX dentro de #chamado-area-{id} #}
+{% set errors = errors|default({}) %}
+{% set form_data = form_data|default({}) %}
+<div class="chamado-box">
+    <h6 class="fw-bold mb-1">💬 Envie sua dúvida</h6>
+    <p class="small text-muted mb-3">O professor recebe sua pergunta e te responde pelo e-mail informado.</p>
+
+    <form hx-post="{{ url_for('main.criar_chamado', id=post.id) }}"
+          hx-target="#chamado-area-{{ post.id }}"
+          hx-swap="innerHTML"
+          method="POST"
+          action="{{ url_for('main.criar_chamado', id=post.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="row g-2 mb-2">
+            <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold mb-1" for="chamado-nome">Seu nome</label>
+                <input type="text" name="nome" id="chamado-nome" maxlength="100" required
+                       class="form-control {% if errors.get('nome') %}is-invalid{% endif %}"
+                       value="{{ form_data.get('nome', '') }}" placeholder="Como você se chama?">
+                {% if errors.get('nome') %}<div class="invalid-feedback">{{ errors.get('nome') }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold mb-1" for="chamado-email">Seu e-mail</label>
+                <input type="email" name="email" id="chamado-email" maxlength="150" required
+                       class="form-control {% if errors.get('email') %}is-invalid{% endif %}"
+                       value="{{ form_data.get('email', '') }}" placeholder="voce@exemplo.com">
+                {% if errors.get('email') %}<div class="invalid-feedback">{{ errors.get('email') }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small fw-bold mb-1" for="chamado-duvida">Sua dúvida</label>
+            <textarea name="duvida" id="chamado-duvida" rows="4" required
+                      class="form-control {% if errors.get('duvida') %}is-invalid{% endif %}"
+                      placeholder="Explique o que você não entendeu...">{{ form_data.get('duvida', '') }}</textarea>
+            {% if errors.get('duvida') %}<div class="invalid-feedback">{{ errors.get('duvida') }}</div>{% endif %}
+        </div>
+        <button type="submit" class="btn btn-accent w-100">
+            <i class="fas fa-paper-plane me-1"></i> Enviar dúvida
+        </button>
+    </form>
+</div>

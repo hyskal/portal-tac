@@ -1,0 +1,27 @@
+{# Lista de chamados — alvo HTMX (#chamados-lista) #}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Post</th><th>Estudante</th><th>Email</th><th>Dúvida</th>
+                <th>Data</th><th>Status</th><th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in chamados %}
+                {% include 'admin/partials/chamado_row.html' %}
+            {% else %}
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state border-0">
+                        <span class="emoji">🎉</span>
+                        <h6 class="fw-bold text-dark">Nenhum chamado por aqui</h6>
+                        <p class="small mb-0">Quando um estudante enviar uma dúvida, ela aparece nesta lista.<br>
+                        Dica: ative "Permitir chamado de dúvida" ao criar um post.</p>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

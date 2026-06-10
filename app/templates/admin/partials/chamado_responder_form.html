@@ -1,0 +1,42 @@
+{# Formulário inline de resposta — expande a linha do chamado #}
+<tr id="chamado-row-{{ c.id }}">
+    <td colspan="7" style="background: var(--surface-2);">
+        <div class="p-2 p-md-3">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                <div class="small">
+                    <b>{{ c.nome }}</b> · <a href="mailto:{{ c.email }}">{{ c.email }}</a>
+                    · {{ c.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    {% if c.post %} · Post: <a href="{{ url_for('main.ver_post', id=c.post_id) }}" target="_blank">{{ c.post.titulo|truncate(40) }}</a>{% endif %}
+                </div>
+                <button class="btn btn-sm btn-soft" title="Fechar sem salvar"
+                        hx-get="{{ url_for('admin.chamado_linha', id=c.id) }}"
+                        hx-target="#chamado-row-{{ c.id }}" hx-swap="outerHTML">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <blockquote class="small bg-white border rounded-3 p-3 mb-3" style="white-space: pre-wrap;">{{ c.duvida }}</blockquote>
+
+            {% if erro %}<div class="text-danger small fw-bold mb-2">{{ erro }}</div>{% endif %}
+
+            <form hx-post="{{ url_for('admin.responder_chamado', id=c.id) }}"
+                  hx-target="#chamado-row-{{ c.id }}" hx-swap="outerHTML"
+                  method="POST" action="{{ url_for('admin.responder_chamado', id=c.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="form-label small fw-bold" for="resposta-{{ c.id }}">Sua resposta</label>
+                <textarea name="resposta_admin" id="resposta-{{ c.id }}" rows="3" class="form-control mb-2"
+                          placeholder="Escreva a resposta para o estudante...">{{ c.resposta_admin or '' }}</textarea>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <button type="submit" class="btn btn-sm btn-accent">
+                        <i class="fas fa-check me-1"></i>{{ 'Atualizar resposta' if c.resolvido else 'Responder e resolver' }}
+                    </button>
+                    <a class="btn btn-sm btn-soft" href="mailto:{{ c.email }}?subject=Re: dúvida no Portal Acadêmico"
+                       target="_blank" title="Abrir e-mail para enviar a resposta">
+                        <i class="fas fa-envelope me-1"></i>Enviar por e-mail
+                    </a>
+                    <span class="small text-muted">Ao salvar, o chamado é marcado como resolvido.</span>
+                </div>
+            </form>
+        </div>
+    </td>
+</tr>

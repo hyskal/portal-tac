@@ -1,113 +1,139 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block title %}{{ turma.nome }} · Portal Acadêmico{% endblock %}
+
+{% block head_extra %}
 <style>
-    :root { --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%); --bg-color: #f4f6f8; --nav-height: 70px; }
-    body { background-color: var(--bg-color); }
-    @media (max-width: 991px) { .navbar-dark { display: none !important; } body { padding-bottom: 100px; } }
-    .glass-header { position: sticky; top: 0; z-index: 1020; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); padding: 10px 0; }
-    .filter-scroll { display: flex; overflow-x: auto; gap: 8px; padding: 10px 15px; scrollbar-width: none; }
-    .filter-scroll::-webkit-scrollbar { display: none; }
-    .chip { white-space: nowrap; padding: 6px 14px; border-radius: 50px; font-size: 0.85rem; font-weight: 600; background: white; border: 1px solid #e0e0e0; color: #636e72; text-decoration: none; }
-    .chip.active { background: #2d3436; color: white; border-color: #2d3436; }
-    .card-modern { border: none; border-radius: 20px; background: white; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); margin-bottom: 20px; transition: transform 0.2s; position: relative; }
-    .card-tag { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 10px; border-radius: 8px; }
-    .btn-check-task { border-radius: 12px; transition: all 0.3s; border: 1px solid #eee; position: relative; z-index: 2; }
-    .task-done { background-color: #f8f9fa !important; opacity: 0.7; border: 1px dashed #ccc !important; }
-    .task-done .card-title, .task-done .text-secondary { text-decoration: line-through; }
-    .btn-done-active { background: #2ecc71 !important; color: white !important; border-color: #2ecc71 !important; }
-    .bottom-nav-modern { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 450px; height: 65px; background: #2c3e50; border-radius: 35px; display: flex; justify-content: space-between; align-items: center; z-index: 1030; padding: 0 15px; }
-    .nav-icon { color: rgba(255,255,255,0.6); display: flex; flex-direction: column; align-items: center; text-decoration: none; width: 50px; }
-    .nav-icon i { font-size: 1.2rem; }
-    .nav-icon span { font-size: 0.6rem; }
-    .nav-icon.active { color: white; }
+    @media (max-width: 991px) { .navbar-portal { display: none !important; } body { padding-bottom: 110px; } }
 </style>
+{% endblock %}
+
+{% block content %}
 
 <!-- HEADER MOBILE -->
 <div class="glass-header d-lg-none">
-    <div class="container d-flex justify-content-between align-items-center mb-2">
-        <a href="{{ url_for('main.index') }}" class="text-dark"><i class="fas fa-chevron-left"></i></a>
+    <div class="container d-flex justify-content-between align-items-center mb-1 pt-1">
+        <a href="{{ url_for('main.index', ficar=1) }}" class="text-dark" aria-label="Voltar"><i class="fas fa-chevron-left"></i></a>
         <div class="text-center">
             <h1 class="h6 fw-bold mb-0" style="color: {{ turma.cor }}">{{ turma.nome }}</h1>
         </div>
-        <a href="#" class="text-dark" data-bs-toggle="offcanvas" data-bs-target="#offcanvasArquivo"><i class="fas fa-calendar-alt"></i></a>
+        <a href="#" class="text-dark" data-bs-toggle="offcanvas" data-bs-target="#offcanvasArquivo" aria-label="Arquivo"><i class="fas fa-calendar-alt"></i></a>
     </div>
     <div class="filter-scroll">
-        <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}" class="chip {% if not filtro_ativo and not mes_ativo %}active{% endif %}">🏠 Tudo</a>
+        <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+           hx-get="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+           class="chip" data-chip data-chip-home>🏠 Tudo</a>
         {% for disc in disciplinas %}
-        <a href="{{ url_for('main.ver_turma', slug=turma.slug, disciplina=disc.id) }}" class="chip {% if disciplina_ativa|int == disc.id %}active{% endif %}">{{ disc.nome }}</a>
+        <a href="{{ url_for('main.ver_turma', slug=turma.slug, disciplina=disc.id) }}"
+           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, disciplina=disc.id) }}"
+           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+           class="chip" data-chip data-chip-disciplina="{{ disc.id }}">{{ disc.nome }}</a>
         {% endfor %}
     </div>
 </div>
 
-<div class="container mt-lg-4 mt-2">
-    <div class="row">
-        <!-- SIDEBAR ARQUIVO (DESKTOP) -->
-        <div class="col-lg-3 d-none d-lg-block sticky-top" style="top: 20px; height: fit-content;">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
-                <h6 class="fw-bold mb-3"><i class="fas fa-archive text-muted me-2"></i> Arquivo</h6>
-                <div class="list-group list-group-flush small">
-                    {% for data in arquivo_datas %}
-                    <a href="{{ url_for('main.ver_turma', slug=turma.slug, mes=data.mes, ano=data.ano) }}" 
-                       class="list-group-item list-group-item-action border-0 px-2 py-2 {% if mes_ativo == data.mes and ano_ativo == data.ano %}fw-bold text-primary{% endif %}">
-                        <i class="far fa-folder me-2"></i> 
-                        {% set meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'] %}
-                        {{ meses[data.mes|int] }} {{ data.ano }}
-                    </a>
-                    {% endfor %}
+<div class="container mt-lg-4 mt-3">
+
+    {% if turma.arquivada %}
+    <div class="alert mb-3 d-flex align-items-center gap-2" style="background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius-md); color: var(--text-muted);">
+        <i class="fas fa-box-archive"></i>
+        <small class="fw-bold">Esta turma está arquivada — o conteúdo permanece disponível apenas para consulta.</small>
+    </div>
+    {% endif %}
+
+    <!-- HERO DESKTOP -->
+    <div class="turma-hero d-none d-lg-flex justify-content-between align-items-end mb-4"
+         style="background: {{ turma.cor }}; background: linear-gradient(120deg, {{ turma.cor }}, color-mix(in srgb, {{ turma.cor }} 55%, #1F2937));">
+        <div>
+            <a href="{{ url_for('main.index', ficar=1) }}" class="text-white-50 text-decoration-none small">
+                <i class="fas fa-chevron-left me-1"></i> Todas as turmas
+            </a>
+            <h1 class="h3 fw-bold mb-0 mt-2 text-white">{{ turma.nome }}</h1>
+        </div>
+        <span class="badge bg-white bg-opacity-25 rounded-pill px-3 py-2">{{ posts|length }} publicações</span>
+    </div>
+
+    <div class="row g-4">
+        <!-- SIDEBAR FILTROS + ARQUIVO (DESKTOP) -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="sticky-top" style="top: 20px;">
+                <div class="admin-card mb-3">
+                    <h6 class="fw-bold mb-3 small text-uppercase text-muted">Filtrar</h6>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="chip text-center" data-chip data-chip-home>🏠 Tudo</a>
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='atividade') }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, filtro='atividade') }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="chip text-center" data-chip data-chip-filtro="atividade">📋 Atividades</a>
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='material') }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, filtro='material') }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="chip text-center" data-chip data-chip-filtro="material">📎 Materiais</a>
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='aviso') }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, filtro='aviso') }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="chip text-center" data-chip data-chip-filtro="aviso">📢 Avisos</a>
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='importante') }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, filtro='importante') }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="chip text-center" data-chip data-chip-filtro="importante">📌 Importantes</a>
+                    </div>
+                    {% if disciplinas %}
+                    <hr class="my-3">
+                    <h6 class="fw-bold mb-2 small text-uppercase text-muted">Disciplinas</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for disc in disciplinas %}
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug, disciplina=disc.id) }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, disciplina=disc.id) }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="chip" style="font-size:.78rem;" data-chip data-chip-disciplina="{{ disc.id }}">{{ disc.nome }}</a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
+
+                {% if arquivo_datas %}
+                <div class="admin-card">
+                    <h6 class="fw-bold mb-2 small text-uppercase text-muted"><i class="fas fa-box-archive me-1"></i> Arquivo</h6>
+                    <div class="list-group list-group-flush small">
+                        {% for data in arquivo_datas %}
+                        <a href="{{ url_for('main.ver_turma', slug=turma.slug, mes=data.mes, ano=data.ano) }}"
+                           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, mes=data.mes, ano=data.ano) }}"
+                           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+                           class="list-group-item list-group-item-action border-0 px-2 py-2 rounded-2"
+                           data-chip data-chip-mes="{{ data.mes }}" data-chip-ano="{{ data.ano }}">
+                            <i class="far fa-folder me-2 text-muted"></i>
+                            {{ ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][data.mes|int] }} {{ data.ano }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
         <!-- FEED PRINCIPAL -->
         <div class="col-lg-6">
-            {% if mes_ativo %}
-                <div class="alert alert-light border mb-4 rounded-4 small d-flex justify-content-between align-items-center">
-                    <span>Exibindo: <b>{{ mes_ativo }}/{{ ano_ativo }}</b></span>
-                    <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}" class="text-decoration-none">Limpar Filtro</a>
-                </div>
-            {% endif %}
-
-            {% for post in posts %}
-            <div class="card-modern p-4 post-card" id="post-{{ post.id }}" data-post-id="{{ post.id }}">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div class="d-flex gap-2 align-items-center">
-                        {% if post.tipo == 'atividade' %} <span class="card-tag bg-danger text-white">Atividade</span>
-                        {% elif post.tipo == 'material' %} <span class="card-tag bg-info text-white">Material</span>
-                        {% else %} <span class="card-tag bg-warning text-dark">Aviso</span> {% endif %}
-                        {% if post.disciplina %}
-                            <span class="card-tag text-white" style="background-color: {{ post.disciplina.cor }}">{{ post.disciplina.nome }}</span>
-                        {% endif %}
-                    </div>
-                    <span class="text-muted small fw-bold">{{ post.scheduled_at.strftime('%d/%m') }}</span>
-                </div>
-                
-                <h5 class="fw-bold card-title"><a href="{{ url_for('main.ver_post', id=post.id, context=turma.slug) }}" class="text-decoration-none text-dark stretched-link">{{ post.titulo }}</a></h5>
-                <p class="text-secondary small mb-3">{{ post.conteudo|striptags|truncate(120) }}</p>
-
-                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                    <span class="small text-muted"><i class="far fa-clock"></i> {{ post.conteudo|reading_time }}</span>
-                    {% if post.tipo == 'atividade' %}
-                    <button class="btn btn-sm btn-check-task" onclick="toggleTask({{ post.id }}, event)" id="btn-check-{{ post.id }}">
-                        <i class="far fa-circle me-1"></i> Concluir
-                    </button>
-                    {% endif %}
-                </div>
+            <div id="feed-posts">
+                {% include 'main/partials/feed_posts.html' %}
             </div>
-            {% endfor %}
         </div>
 
         <!-- SIDEBAR BIBLIOTECA (DESKTOP) -->
-        <div class="col-lg-3 d-none d-lg-block sticky-top" style="top: 20px; height: fit-content;">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="admin-card sticky-top" style="top: 20px;">
                 <h6 class="fw-bold mb-3">📚 Biblioteca de Links</h6>
                 <div class="list-group list-group-flush">
                     {% for link in turma.links %}
-                    <a href="{{ link.url }}" target="_blank" class="list-group-item list-group-item-action border-0 px-0 py-2 small">
-                        <i class="fas fa-external-link-alt text-primary me-2"></i> {{ link.titulo }}
+                    <a href="{{ link.url }}" target="_blank" rel="noopener" class="list-group-item list-group-item-action border-0 px-0 py-2 small">
+                        <i class="fas fa-external-link-alt me-2" style="color: var(--accent);"></i> {{ link.titulo }}
                     </a>
                     {% else %}
-                    <p class="text-muted small p-2">Nenhum link útil cadastrado.</p>
+                    <p class="text-muted small p-2 mb-0">Nenhum link útil cadastrado.</p>
                     {% endfor %}
                 </div>
             </div>
@@ -117,9 +143,18 @@
 
 <!-- BOTTOM NAV (MOBILE) -->
 <nav class="bottom-nav-modern d-lg-none">
-    <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}" class="nav-icon {% if not filtro_ativo %}active{% endif %}"><i class="fas fa-home"></i><span>Mural</span></a>
-    <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='atividade') }}" class="nav-icon {% if filtro_ativo == 'atividade' %}active{% endif %}"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
-    <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='material') }}" class="nav-icon {% if filtro_ativo == 'material' %}active{% endif %}"><i class="fas fa-layer-group"></i><span>Material</span></a>
+    <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+       hx-get="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+       hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+       class="nav-icon" data-chip data-chip-home><i class="fas fa-home"></i><span>Mural</span></a>
+    <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='atividade') }}"
+       hx-get="{{ url_for('main.ver_turma', slug=turma.slug, filtro='atividade') }}"
+       hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+       class="nav-icon" data-chip data-chip-filtro="atividade"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
+    <a href="{{ url_for('main.ver_turma', slug=turma.slug, filtro='material') }}"
+       hx-get="{{ url_for('main.ver_turma', slug=turma.slug, filtro='material') }}"
+       hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+       class="nav-icon" data-chip data-chip-filtro="material"><i class="fas fa-layer-group"></i><span>Material</span></a>
     <a href="#" class="nav-icon" data-bs-toggle="offcanvas" data-bs-target="#offcanvasBiblioteca"><i class="fas fa-link"></i><span>Links</span></a>
 </nav>
 
@@ -132,7 +167,7 @@
   <div class="offcanvas-body">
     <div class="list-group list-group-flush">
         {% for link in turma.links %}
-        <a href="{{ link.url }}" target="_blank" class="list-group-item list-group-item-action py-3 border-0 border-bottom">
+        <a href="{{ link.url }}" target="_blank" rel="noopener" class="list-group-item list-group-item-action py-3 border-0 border-bottom">
             <span class="fw-bold text-dark">{{ link.titulo }}</span>
             <i class="fas fa-chevron-right float-end text-muted small"></i>
         </a>
@@ -152,18 +187,28 @@
   <div class="offcanvas-body">
     <div class="list-group list-group-flush">
         {% for data in arquivo_datas %}
-        <a href="{{ url_for('main.ver_turma', slug=turma.slug, mes=data.mes, ano=data.ano) }}" class="list-group-item py-3">
-            <i class="far fa-calendar-check me-3 text-primary"></i> 
+        <a href="{{ url_for('main.ver_turma', slug=turma.slug, mes=data.mes, ano=data.ano) }}"
+           hx-get="{{ url_for('main.ver_turma', slug=turma.slug, mes=data.mes, ano=data.ano) }}"
+           hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+           class="list-group-item py-3" data-bs-dismiss="offcanvas"
+           data-chip data-chip-mes="{{ data.mes }}" data-chip-ano="{{ data.ano }}">
+            <i class="far fa-calendar-check me-3" style="color: var(--accent);"></i>
             {{ ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][data.mes|int] }} {{ data.ano }}
         </a>
+        {% else %}
+        <div class="text-center py-5 text-muted">Nenhum mês com publicações ainda.</div>
         {% endfor %}
     </div>
   </div>
 </div>
 
 <script>
+// Lembra a turma do aluno para o redirecionamento automático da home
+try { localStorage.setItem('portal_turma_slug', {{ turma.slug|tojson }}); } catch (e) {}
+
+// ---------- Tarefas concluídas (localStorage) ----------
 function toggleTask(id, event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     const key = 'task_done_' + id;
     const isDone = localStorage.getItem(key) === 'true';
     if (isDone) { localStorage.removeItem(key); } else { localStorage.setItem(key, 'true'); }
@@ -177,13 +222,35 @@ function renderTasks() {
         const isDone = localStorage.getItem('task_done_' + id) === 'true';
         if (isDone) {
             card.classList.add('task-done');
-            if(btn) { btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> Feito'; btn.classList.add('btn-done-active'); }
+            if (btn) { btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> Feito'; btn.classList.add('btn-done-active'); }
         } else {
             card.classList.remove('task-done');
-            if(btn) { btn.innerHTML = '<i class="far fa-circle me-1"></i> Concluir'; btn.classList.remove('btn-done-active'); }
+            if (btn) { btn.innerHTML = '<i class="far fa-circle me-1"></i> Concluir'; btn.classList.remove('btn-done-active'); }
         }
     });
 }
-document.addEventListener('DOMContentLoaded', renderTasks);
+
+// ---------- Sincroniza chips/nav ativos com a URL (hx-push-url) ----------
+function syncActiveFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const filtro = params.get('filtro');
+    const disciplina = params.get('disciplina');
+    const mes = params.get('mes');
+    const semFiltro = !filtro && !disciplina && !mes;
+
+    document.querySelectorAll('[data-chip]').forEach(el => {
+        let ativo = false;
+        if (el.hasAttribute('data-chip-home')) ativo = semFiltro;
+        else if (el.dataset.chipFiltro) ativo = el.dataset.chipFiltro === filtro;
+        else if (el.dataset.chipDisciplina) ativo = el.dataset.chipDisciplina === disciplina;
+        else if (el.dataset.chipMes) ativo = el.dataset.chipMes === mes && el.dataset.chipAno === params.get('ano');
+        el.classList.toggle('active', ativo);
+        el.classList.toggle('fw-bold', ativo && el.classList.contains('list-group-item'));
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => { renderTasks(); syncActiveFilters(); });
+document.body.addEventListener('htmx:afterSettle', () => { renderTasks(); syncActiveFilters(); });
+window.addEventListener('popstate', () => setTimeout(syncActiveFilters, 50));
 </script>
 {% endblock %}

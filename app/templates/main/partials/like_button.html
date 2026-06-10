@@ -1,0 +1,12 @@
+{# Botão de curtir — fragmento usado no feed, na página do post e no swap do HTMX #}
+{% set liked = liked|default(request.cookies.get('liked_' ~ post.id) == '1') %}
+<button id="like-btn-{{ post.id }}"
+        class="btn-like {% if liked %}liked{% endif %} {% if animar|default(false) %}pop{% endif %}"
+        hx-post="{{ url_for('api.like_post', id=post.id) }}"
+        hx-swap="outerHTML"
+        hx-target="this"
+        aria-pressed="{{ 'true' if liked else 'false' }}"
+        title="{{ 'Você curtiu — toque para desfazer' if liked else 'Curtir esta postagem' }}">
+    <i class="{{ 'fas' if liked else 'far' }} fa-heart"></i>
+    <span>{{ post.likes or 0 }}</span>
+</button>

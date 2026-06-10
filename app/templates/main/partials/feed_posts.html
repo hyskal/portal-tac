@@ -1,0 +1,65 @@
+{# Fragmento do feed — alvo dos filtros HTMX (#feed-posts) #}
+
+{% if mes_ativo %}
+<div class="alert alert-light border mb-3 rounded-4 small d-flex justify-content-between align-items-center">
+    <span>📅 Exibindo: <b>{{ ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mes_ativo|int] }} de {{ ano_ativo }}</b></span>
+    <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+       hx-get="{{ url_for('main.ver_turma', slug=turma.slug) }}"
+       hx-target="#feed-posts" hx-swap="innerHTML" hx-push-url="true"
+       class="text-decoration-none fw-bold">Limpar</a>
+</div>
+{% endif %}
+
+{% for post in posts %}
+<article class="card-feed post-card {% if post.is_pinned %}fixado{% endif %}" id="post-{{ post.id }}" data-post-id="{{ post.id }}">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            {% if post.is_pinned %}<span class="card-tag" style="background:#EEF2FF;color:var(--accent);">📌 Fixado</span>{% endif %}
+            {% if post.tipo == 'atividade' %}
+                <span class="card-tag tag-atividade">📋 Atividade</span>
+            {% elif post.tipo == 'material' %}
+                <span class="card-tag tag-material">📎 Material</span>
+            {% else %}
+                <span class="card-tag tag-aviso">📢 Aviso</span>
+            {% endif %}
+            {% if post.disciplina %}
+                <span class="card-tag text-white" style="background-color: {{ post.disciplina.cor }}">{{ post.disciplina.nome }}</span>
+            {% endif %}
+        </div>
+        <span class="text-muted small fw-bold flex-shrink-0 ms-2">{{ post.scheduled_at.strftime('%d/%m') }}</span>
+    </div>
+
+    <h5 class="fw-bold card-title">
+        <a href="{{ url_for('main.ver_post', id=post.id, context=turma.slug) }}" class="text-decoration-none stretched-link">{{ post.titulo }}</a>
+    </h5>
+    <p class="text-secondary small mb-3 excerpt">{{ post.conteudo|striptags|truncate(120) }}</p>
+
+    {% if post.prazo %}
+    <div class="small text-danger fw-bold mb-2"><i class="fas fa-hourglass-half me-1"></i> Entrega: {{ post.prazo.strftime('%d/%m às %H:%M') }}</div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            {% include 'main/partials/like_button.html' %}
+            <span class="small text-muted"><i class="far fa-clock"></i> {{ post.conteudo|reading_time }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            {% if post.permite_chamado %}
+            <a href="{{ url_for('main.ver_post', id=post.id, context=turma.slug, chamado=1) }}#chamado-area-{{ post.id }}"
+               class="btn-chamado btn btn-sm position-relative" style="z-index:2;">💬 Dúvida?</a>
+            {% endif %}
+            {% if post.tipo == 'atividade' %}
+            <button class="btn btn-sm btn-check-task" onclick="toggleTask({{ post.id }}, event)" id="btn-check-{{ post.id }}">
+                <i class="far fa-circle me-1"></i> Concluir
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</article>
+{% else %}
+<div class="empty-state">
+    <span class="emoji">🍃</span>
+    <h6 class="fw-bold text-dark">Nada por aqui ainda</h6>
+    <p class="small mb-0">Nenhuma publicação encontrada com esse filtro.</p>
+</div>
+{% endfor %}

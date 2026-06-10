@@ -1,0 +1,26 @@
+{# Linha de um chamado — substituída via HTMX ao responder #}
+<tr id="chamado-row-{{ c.id }}" class="{% if c.resolvido %}chamado-respondido{% endif %}">
+    <td>
+        <a href="{{ url_for('main.ver_post', id=c.post_id) }}" target="_blank" class="text-decoration-none fw-bold">
+            {{ c.post.titulo|truncate(34) if c.post else '—' }}
+        </a>
+    </td>
+    <td>{{ c.nome }}</td>
+    <td><a href="mailto:{{ c.email }}" class="text-decoration-none small">{{ c.email }}</a></td>
+    <td><span class="duvida-truncada d-inline-block small" title="{{ c.duvida }}">{{ c.duvida|truncate(70) }}</span></td>
+    <td><small class="text-muted">{{ c.created_at.strftime('%d/%m %H:%M') }}</small></td>
+    <td>
+        {% if c.resolvido %}
+            <span class="badge rounded-pill" style="background: var(--success);">Respondido</span>
+        {% else %}
+            <span class="badge rounded-pill text-dark" style="background: #FDE68A;">Pendente</span>
+        {% endif %}
+    </td>
+    <td class="text-end">
+        <button class="btn btn-sm {{ 'btn-soft' if c.resolvido else 'btn-accent' }}"
+                hx-get="{{ url_for('admin.chamado_responder_form', id=c.id) }}"
+                hx-target="#chamado-row-{{ c.id }}" hx-swap="outerHTML">
+            <i class="fas fa-reply me-1"></i>{{ 'Ver resposta' if c.resolvido else 'Responder' }}
+        </button>
+    </td>
+</tr>

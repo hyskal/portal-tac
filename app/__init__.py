@@ -2,7 +2,7 @@ import cloudinary
 import re
 from flask import Flask
 from config import Config
-from app.extensions import db, migrate, login_manager, ckeditor, csrf
+from app.extensions import db, migrate, login_manager, csrf
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -12,7 +12,6 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
-    ckeditor.init_app(app)
     csrf.init_app(app)
 
     from app import models # Importa modelos
@@ -26,12 +25,12 @@ def create_app(config_class=Config):
             secure=True
         )
 
-    # --- NOVO: FILTRO DE YOUTUBE ---
+    # --- FILTRO DE YOUTUBE ---
     @app.template_filter('youtube_embed')
     def youtube_embed_filter(url):
         if not url: return None
-        # Regex poderoso que pega: youtu.be, m.youtube, youtube.com/watch?v=
-        regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([\w\-]+)'
+        # Regex poderoso que pega: youtu.be, m.youtube, youtube.com/watch?v=, /shorts/
+        regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([\w\-]+)'
         match = re.search(regex, url)
         if match:
             video_id = match.group(1)

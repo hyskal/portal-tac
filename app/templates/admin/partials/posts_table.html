@@ -1,0 +1,70 @@
+{# Tabela de posts + paginação — alvo HTMX (#posts-table-body) #}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr><th>Título</th><th>Turmas & Disciplina</th><th>Data</th><th class="text-center">❤️</th><th class="text-end">Ações</th></tr>
+        </thead>
+        <tbody>
+            {% for post in posts.items %}
+            <tr>
+                <td>
+                    <div class="fw-bold">{{ post.titulo }}</div>
+                    <div class="small text-muted">
+                        {{ post.tipo|upper }}
+                        {% if post.is_draft %}| <span class="text-danger">RASCUNHO</span>{% endif %}
+                        {% if post.permite_chamado %}| <span title="Aceita chamados de dúvida">💬</span>{% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if post.disciplina %}<span class="badge mb-1" style="background-color: {{ post.disciplina.cor }}">{{ post.disciplina.nome }}</span><br>{% endif %}
+                    {% for t in post.turmas %}
+                        <span class="badge rounded-pill text-white mb-1" style="background-color: {{ t.cor }}">{{ t.nome }}</span>
+                    {% endfor %}
+                </td>
+                <td><small>{{ post.scheduled_at.strftime('%d/%m/%Y') }}</small></td>
+                <td class="text-center"><small class="fw-bold text-muted">{{ post.likes or 0 }}</small></td>
+                <td class="text-end">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-dark" title="Copiar link"
+                                onclick="navigator.clipboard.writeText('{{ url_for('main.ver_post', id=post.id, _external=True) }}').then(() => showToast('Link copiado!', 'info'))"><i class="fas fa-link"></i></button>
+                        <a href="{{ url_for('admin.gerenciar_post', id=post.id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a href="{{ url_for('admin.clonar_post', id=post.id) }}" class="btn btn-sm btn-outline-warning" title="Clonar"><i class="fas fa-copy"></i></a>
+                        <a href="{{ url_for('admin.delete_post', id=post.id) }}" class="btn btn-sm btn-outline-danger" title="Lixeira" onclick="return confirm('Excluir?')"><i class="fas fa-trash"></i></a>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-5">Nenhum post encontrado com esses filtros. 🍃</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if posts.pages > 1 %}
+<nav class="d-flex justify-content-center mt-2" aria-label="Paginação de posts">
+    <ul class="pagination pagination-sm mb-0">
+        {% set args = request.args.to_dict() %}
+        <li class="page-item {% if not posts.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.dashboard', **dict(args, page=posts.prev_num or 1)) }}"
+               hx-get="{{ url_for('admin.dashboard', **dict(args, page=posts.prev_num or 1)) }}"
+               hx-target="#posts-table-body" hx-swap="innerHTML">&laquo;</a>
+        </li>
+        {% for p in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if p %}
+            <li class="page-item {% if p == posts.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.dashboard', **dict(args, page=p)) }}"
+                   hx-get="{{ url_for('admin.dashboard', **dict(args, page=p)) }}"
+                   hx-target="#posts-table-body" hx-swap="innerHTML">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+        {% endfor %}
+        <li class="page-item {% if not posts.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('admin.dashboard', **dict(args, page=posts.next_num or posts.pages)) }}"
+               hx-get="{{ url_for('admin.dashboard', **dict(args, page=posts.next_num or posts.pages)) }}"
+               hx-target="#posts-table-body" hx-swap="innerHTML">&raquo;</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}

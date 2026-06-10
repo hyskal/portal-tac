@@ -1,0 +1,25 @@
+{# Linha da tabela de turmas — substituída via HTMX ao arquivar/reativar #}
+<tr id="turma-row-{{ t.id }}" class="{% if t.arquivada %}turma-arquivada-row{% endif %}">
+    <td class="fw-bold">
+        {{ t.nome }}
+        {% if t.arquivada %}<span class="badge-arquivada ms-2">Arquivada</span>{% endif %}
+    </td>
+    <td><code>{{ t.slug }}</code></td>
+    <td><span class="badge text-white" style="background-color: {{ t.cor }}; padding: 8px 12px;">{{ t.cor }}</span></td>
+    <td class="text-end">
+        <div class="btn-group">
+            <button class="btn btn-sm btn-soft"
+                    hx-post="{{ url_for('admin.arquivar_turma', id=t.id) }}"
+                    hx-target="#turma-row-{{ t.id }}" hx-swap="outerHTML"
+                    title="{{ 'Reativar turma' if t.arquivada else 'Arquivar turma (some da página inicial)' }}">
+                {% if t.arquivada %}
+                    <i class="fas fa-box-open me-1"></i> Reativar
+                {% else %}
+                    <i class="fas fa-archive me-1"></i> Arquivar
+                {% endif %}
+            </button>
+            <a href="{{ url_for('admin.delete_turma', id=t.id) }}" class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('Excluir esta turma? Essa ação não pode ser desfeita.')" title="Excluir"><i class="fas fa-trash"></i></a>
+        </div>
+    </td>
+</tr>

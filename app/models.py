@@ -35,7 +35,8 @@ class Turma(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     slug = db.Column(db.String(100), unique=True, nullable=False)
-    cor = db.Column(db.String(7), default="#3498db") 
+    cor = db.Column(db.String(7), default="#3498db")
+    arquivada = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     links = db.relationship('Link', secondary=link_turmas, lazy='subquery',
         backref=db.backref('turmas', lazy=True))
 
@@ -61,17 +62,32 @@ class Post(db.Model):
     deleted_at = db.Column(db.DateTime, nullable=True)
     is_draft = db.Column(db.Boolean, default=False)
     is_pinned = db.Column(db.Boolean, default=False)
-    tipo = db.Column(db.String(50), nullable=False, default='aviso') 
-    
-    arquivo_url = db.Column(db.String(500), nullable=True) 
+    tipo = db.Column(db.String(50), nullable=False, default='aviso')
+
+    arquivo_url = db.Column(db.String(500), nullable=True)
     arquivo_public_id = db.Column(db.String(100), nullable=True)
     arquivo_formato = db.Column(db.String(10), nullable=True)
     video_url = db.Column(db.String(200), nullable=True)
     visualizacoes = db.Column(db.Integer, default=0)
+    likes = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    permite_chamado = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
 
     # Relacionamentos
     turmas = db.relationship('Turma', secondary=post_turmas, lazy='subquery',
         backref=db.backref('posts', lazy=True))
-    
+    chamados = db.relationship('Chamado', backref='post', lazy=True,
+        cascade='all, delete-orphan')
+
     # Novo: Disciplina (1 post pertence a 1 disciplina, ou nenhuma)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplina.id'), nullable=True)
+
+class Chamado(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(150), nullable=False)
+    duvida = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    resolvido = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    resposta_admin = db.Column(db.Text, nullable=True)
+    respondido_at = db.Column(db.DateTime, nullable=True)

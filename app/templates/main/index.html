@@ -4,75 +4,88 @@
 
 <!-- MODO PROFESSOR (LOGADO): Vê tudo -->
 {% if current_user.is_authenticated %}
-    <div class="text-center py-4">
-        <h1 class="h3 fw-bold mb-3">🎓 Portal do Professor</h1>
-        <p class="text-muted">Selecione uma turma para visualizar como aluno.</p>
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary mb-4">
-            <i class="fas fa-cog"></i> Ir para o Painel Admin
-        </a>
-    </div>
+    <div class="container">
+        <div class="text-center py-4">
+            <h1 class="h3 fw-bold mb-2">🎓 Portal do Professor</h1>
+            <p class="text-muted">Selecione uma turma para visualizar como aluno.</p>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-accent mb-4">
+                <i class="fas fa-gauge-high me-1"></i> Ir para o Painel Admin
+            </a>
+        </div>
 
-    <div class="row g-3">
-        {% for turma in turmas %}
-        <div class="col-12 col-md-6 col-lg-4">
-            <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}" class="text-decoration-none text-dark"> 
-                <div class="card shadow-sm card-post h-100 border-start border-5" style="border-color: {{ turma.cor }} !important;">
-                    <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="row g-3 pb-5">
+            {% for turma in turmas %}
+            <div class="col-12 col-md-6 col-lg-4">
+                <a href="{{ url_for('main.ver_turma', slug=turma.slug) }}" class="text-decoration-none">
+                    <div class="card-feed h-100 mb-0 d-flex flex-row justify-content-between align-items-center" style="border-left: 5px solid {{ turma.cor }};">
                         <div>
-                            <h5 class="card-title mb-1 fw-bold">{{ turma.nome }}</h5>
-                            <small class="text-muted">Acessar Área &rarr;</small>
+                            <h5 class="card-title mb-1 fw-bold text-dark">{{ turma.nome }}</h5>
+                            <small class="text-muted">Acessar área da turma &rarr;</small>
                         </div>
-                        <div class="bg-light rounded-circle p-3">
+                        <div class="rounded-circle p-3" style="background: var(--surface-2);">
                             <i class="fas fa-users fa-lg" style="color: {{ turma.cor }}"></i>
                         </div>
                     </div>
+                </a>
+            </div>
+            {% else %}
+            <div class="col-12 mt-4">
+                <div class="empty-state">
+                    <span class="emoji">🏫</span>
+                    <h6 class="fw-bold text-dark">Nenhuma turma ativa</h6>
+                    <p class="small mb-0">Crie uma turma no painel admin (turmas arquivadas ficam ocultas aqui).</p>
                 </div>
-            </a>
+            </div>
+            {% endfor %}
         </div>
-        {% else %}
-        <div class="col-12 text-center mt-5">
-            <div class="alert alert-info">Nenhuma turma cadastrada.</div>
-        </div>
-        {% endfor %}
     </div>
 
 <!-- MODO ALUNO (PÚBLICO) -->
 {% else %}
     <!-- SCRIPT DE REDIRECIONAMENTO INTELIGENTE -->
     <script>
-        // Verifica se o aluno já tem uma turma salva no celular
-        const savedClassSlug = localStorage.getItem('portal_turma_slug');
-        
-        // Se tiver turma salva E não estivermos em loop de redirecionamento
-        if (savedClassSlug) {
-            // Mostra um carregando simples enquanto redireciona
-            document.write('<div style="height:100vh;display:flex;justify-content:center;align-items:center;font-family:sans-serif;color:#666;">Redirecionando para sua turma...</div>');
-            window.location.href = '/' + savedClassSlug;
-        }
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            // "?ficar=1" deixa o aluno na home (e esquece a turma salva)
+            if (params.get('ficar')) {
+                localStorage.removeItem('portal_turma_slug');
+                return;
+            }
+            const savedClassSlug = localStorage.getItem('portal_turma_slug');
+            if (savedClassSlug) {
+                document.write('<div style="height:100vh;display:flex;justify-content:center;align-items:center;font-family:Inter,sans-serif;color:#6B7280;">Redirecionando para sua turma...</div>');
+                window.location.href = '/' + savedClassSlug;
+            }
+        })();
     </script>
 
-    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
-        <div class="col-md-6 text-center">
-            <div class="mb-4">
-                <span class="fa-stack fa-4x">
-                    <i class="fas fa-circle fa-stack-2x text-light"></i>
-                    <i class="fas fa-graduation-cap fa-stack-1x text-primary"></i>
-                </span>
-            </div>
-            
-            <h1 class="h2 fw-bold mb-3">Bem-vindo ao Portal</h1>
-            
-            <div class="card border-0 shadow-sm bg-light p-4 mt-4">
-                <p class="lead mb-0" style="font-size: 1.1rem;">
-                    Se é sua primeira vez, utilize o <strong>link enviado pelo professor</strong>. <br>
-                    Na próxima, levaremos você direto para sua turma.
-                </p>
-            </div>
+    <div class="container">
+        <div class="row justify-content-center align-items-center" style="min-height: 72vh;">
+            <div class="col-md-6 text-center">
+                <div class="mb-4">
+                    <span class="avatar-initial" style="width:88px;height:88px;font-size:2.2rem;border-radius:28px;">
+                        <i class="fas fa-graduation-cap"></i>
+                    </span>
+                </div>
 
-            <div class="mt-5">
-                <a href="{{ url_for('auth.login') }}" class="btn btn-link text-muted btn-sm">
-                    <i class="fas fa-lock"></i> Acesso Professor
-                </a>
+                <h1 class="h2 fw-bold mb-2">Bem-vindo ao Portal</h1>
+                <p class="text-muted mb-4">Avisos, materiais e atividades da sua turma — direto no celular.</p>
+
+                <div class="admin-card p-4 mt-2 text-start">
+                    <div class="d-flex gap-3 align-items-start">
+                        <div style="font-size:1.6rem;">🔗</div>
+                        <p class="mb-0" style="font-size: 1.02rem;">
+                            Se é sua primeira vez, utilize o <strong>link enviado pelo professor</strong>.<br>
+                            <span class="text-muted small">Na próxima visita, levaremos você direto para sua turma.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-link text-muted btn-sm text-decoration-none">
+                        <i class="fas fa-lock me-1"></i> Acesso Professor
+                    </a>
+                </div>
             </div>
         </div>
     </div>
