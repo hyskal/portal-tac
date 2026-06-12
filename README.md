@@ -56,6 +56,11 @@ de ambiente homônimas em maiúsculas servem de fallback):
 Em qualquer provedor de API, falha de conexão ⇒ **fallback automático para salvamento
 local** (o post nunca fica sem anexo por instabilidade da API).
 
+Segurança das chaves: as chaves de API **nunca são ecoadas de volta no HTML** do
+admin — o campo aparece vazio com placeholder "chave definida"; deixar em branco
+mantém a chave atual e o checkbox "Limpar chave salva" remove explicitamente.
+O botão "Testar conexão" usa a chave salva quando o campo está em branco.
+
 ## Migrations
 
 - `e614d240e2fd` — baseline com o schema original

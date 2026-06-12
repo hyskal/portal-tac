@@ -278,7 +278,14 @@
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold mb-1">Chave de API (x-api-key)</label>
                                     <input type="password" name="sml_api_key" class="form-control form-control-sm"
-                                           value="{{ storage.sml_api_key }}" autocomplete="off" placeholder="SUA_CHAVE">
+                                           autocomplete="new-password"
+                                           placeholder="{{ '•••••• chave definida — vazio mantém' if storage.sml_api_key_definida else 'SUA_CHAVE' }}">
+                                    {% if storage.sml_api_key_definida %}
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="limpar_sml_api_key" id="limpar_sml_api_key">
+                                        <label class="form-check-label text-muted" for="limpar_sml_api_key" style="font-size:.74rem;">Limpar chave salva</label>
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold mb-1">Projeto</label>
@@ -299,7 +306,14 @@
                                 <div class="col-md-4">
                                     <label class="form-label small fw-bold mb-1">Chave (service_role)</label>
                                     <input type="password" name="supabase_key" class="form-control form-control-sm"
-                                           value="{{ storage.supabase_key }}" autocomplete="off" placeholder="eyJhbGciOi...">
+                                           autocomplete="new-password"
+                                           placeholder="{{ '•••••• chave definida — vazio mantém' if storage.supabase_key_definida else 'eyJhbGciOi...' }}">
+                                    {% if storage.supabase_key_definida %}
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="limpar_supabase_key" id="limpar_supabase_key">
+                                        <label class="form-check-label text-muted" for="limpar_supabase_key" style="font-size:.74rem;">Limpar chave salva</label>
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold mb-1">Bucket</label>

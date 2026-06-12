@@ -39,10 +39,13 @@ def dashboard():
     path_horario = os.path.join(current_app.root_path, 'static', 'uploads', 'horario_professor.png')
     tem_horario = os.path.exists(path_horario)
 
-    # Configurações de armazenamento (aba Sistema)
+    # Configurações de armazenamento (aba Sistema).
+    # As chaves de API nunca são enviadas ao template — só um booleano
+    # indicando que existem (campo vazio no form = manter a atual).
     storage = {chave: storage_service.get_config(chave) for chave in (
-        'sml_base_url', 'sml_api_key', 'sml_projeto',
-        'supabase_url', 'supabase_key', 'supabase_bucket')}
+        'sml_base_url', 'sml_projeto', 'supabase_url', 'supabase_bucket')}
+    storage['sml_api_key_definida'] = bool(storage_service.get_config('sml_api_key'))
+    storage['supabase_key_definida'] = bool(storage_service.get_config('supabase_key'))
     storage['provider'] = storage_service.provider_ativo()
     storage['cloudinary_env'] = bool(current_app.config.get('CLOUDINARY_CLOUD_NAME'))
     storage['sml_base_url_padrao'] = storage_service.SML_BASE_URL_PADRAO
@@ -243,9 +246,15 @@ def salvar_storage():
     if provider not in storage_service.PROVIDERS:
         provider = 'local'
     storage_service.set_config('storage_provider', provider)
-    for chave in ('sml_base_url', 'sml_api_key', 'sml_projeto',
-                  'supabase_url', 'supabase_key', 'supabase_bucket'):
+    # Campos não-sensíveis: sobrescreve sempre
+    for chave in ('sml_base_url', 'sml_projeto', 'supabase_url', 'supabase_bucket'):
         if chave in request.form:
+            storage_service.set_config(chave, request.form.get(chave))
+    # Chaves de API: vazio mantém a atual; "limpar_*" remove explicitamente
+    for chave in ('sml_api_key', 'supabase_key'):
+        if request.form.get(f'limpar_{chave}'):
+            storage_service.set_config(chave, '')
+        elif (request.form.get(chave) or '').strip():
             storage_service.set_config(chave, request.form.get(chave))
     db.session.commit()
     nomes = {'local': 'Salvamento local', 'sml': 'SML Storage API',
