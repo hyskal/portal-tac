@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Sistema · Portal Acadêmico{% endblock %}
+
+{% block content %}
+<div class="admin-shell">
+
+    {% with pagina = 'sistema' %}{% include 'admin/partials/sidebar.html' %}{% endwith %}
+
+    <main class="admin-main">
+
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="h4 fw-bold mb-0">⚙️ Sistema</h2>
+                <small class="text-muted">API de storage, backups e relatórios.</small>
+            </div>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-soft">
+                <i class="fas fa-arrow-left me-1"></i> Voltar ao painel
+            </a>
+        </div>
+
+        <!-- ARMAZENAMENTO DE ANEXOS -->
+        <div class="admin-card mb-3" id="storage">
+            <h6 class="fw-bold mb-1"><i class="fas fa-cloud-arrow-up me-2" style="color: var(--accent);"></i>Armazenamento de Anexos (API)</h6>
+            <p class="small text-muted mb-3">
+                Escolha onde os anexos e imagens dos posts são guardados. Se a API escolhida não responder na hora
+                do upload, o arquivo é <b>salvo localmente no servidor</b> (fallback automático) e você é avisado.
+            </p>
+
+            <form id="storageForm" action="{{ url_for('admin.salvar_storage') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="provider-option {% if storage.provider == 'local' %}selecionado{% endif %}">
+                            <input type="radio" name="storage_provider" value="local" {% if storage.provider == 'local' %}checked{% endif %}>
+                            <span><b>💾 Local</b><br><small class="text-muted">Pasta do servidor (padrão)</small></span>
+                        </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="provider-option {% if storage.provider == 'sml' %}selecionado{% endif %}">
+                            <input type="radio" name="storage_provider" value="sml" {% if storage.provider == 'sml' %}checked{% endif %}>
+                            <span><b>🔥 SML Storage API</b><br><small class="text-muted">Firebase (API própria)</small></span>
+                        </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="provider-option {% if storage.provider == 'supabase' %}selecionado{% endif %}">
+                            <input type="radio" name="storage_provider" value="supabase" {% if storage.provider == 'supabase' %}checked{% endif %}>
+                            <span><b>⚡ Supabase</b><br><small class="text-muted">Supabase Storage</small></span>
+                        </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="provider-option {% if storage.provider == 'cloudinary' %}selecionado{% endif %}">
+                            <input type="radio" name="storage_provider" value="cloudinary" {% if storage.provider == 'cloudinary' %}checked{% endif %}>
+                            <span><b>☁️ Cloudinary</b><br><small class="text-muted">Via variáveis de ambiente</small></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div data-provider-fields="local" class="small text-muted mb-2" style="display:none;">
+                    Os arquivos ficam em <code>static/uploads/posts/AAAA-MM/</code>. Nenhuma chave necessária.
+                </div>
+
+                <div data-provider-fields="sml" style="display:none;">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold mb-1">Base URL</label>
+                            <input type="text" name="sml_base_url" class="form-control form-control-sm"
+                                   value="{{ storage.sml_base_url }}" placeholder="{{ storage.sml_base_url_padrao }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-1">Chave de API (x-api-key)</label>
+                            <input type="password" name="sml_api_key" class="form-control form-control-sm"
+                                   autocomplete="new-password"
+                                   placeholder="{{ '•••••• chave definida — vazio mantém' if storage.sml_api_key_definida else 'SUA_CHAVE' }}">
+                            {% if storage.sml_api_key_definida %}
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" name="limpar_sml_api_key" id="limpar_sml_api_key">
+                                <label class="form-check-label text-muted" for="limpar_sml_api_key" style="font-size:.74rem;">Limpar chave salva</label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Projeto</label>
+                            <input type="text" name="sml_projeto" class="form-control form-control-sm"
+                                   value="{{ storage.sml_projeto }}" placeholder="portal-tac">
+                        </div>
+                    </div>
+                    <div class="small text-muted mb-2">Fluxo de 3 passos (getUploadUrl → PUT → confirmUpload). Limite de 10 MB por arquivo — acima disso o anexo cai no salvamento local.</div>
+                </div>
+
+                <div data-provider-fields="supabase" style="display:none;">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold mb-1">URL do projeto</label>
+                            <input type="text" name="supabase_url" class="form-control form-control-sm"
+                                   value="{{ storage.supabase_url }}" placeholder="https://xxxx.supabase.co">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold mb-1">Chave (service_role)</label>
+                            <input type="password" name="supabase_key" class="form-control form-control-sm"
+                                   autocomplete="new-password"
+                                   placeholder="{{ '•••••• chave definida — vazio mantém' if storage.supabase_key_definida else 'eyJhbGciOi...' }}">
+                            {% if storage.supabase_key_definida %}
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" name="limpar_supabase_key" id="limpar_supabase_key">
+                                <label class="form-check-label text-muted" for="limpar_supabase_key" style="font-size:.74rem;">Limpar chave salva</label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Bucket</label>
+                            <input type="text" name="supabase_bucket" class="form-control form-control-sm"
+                                   value="{{ storage.supabase_bucket }}" placeholder="portal">
+                        </div>
+                    </div>
+                    <div class="small text-muted mb-2">O bucket precisa ser <b>público</b> para os alunos abrirem os anexos.</div>
+                </div>
+
+                <div data-provider-fields="cloudinary" class="small mb-2" style="display:none;">
+                    {% if storage.cloudinary_env %}
+                        <span class="text-success"><i class="fas fa-circle-check me-1"></i>Variáveis CLOUDINARY_* detectadas no ambiente do servidor.</span>
+                    {% else %}
+                        <span class="text-danger"><i class="fas fa-circle-xmark me-1"></i>Variáveis CLOUDINARY_* não configuradas — uploads cairão no salvamento local.</span>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap mt-2">
+                    <button type="submit" class="btn btn-accent btn-sm"><i class="fas fa-save me-1"></i> Salvar configurações</button>
+                    <button type="button" class="btn btn-soft btn-sm"
+                            hx-post="{{ url_for('admin.testar_storage') }}"
+                            hx-include="#storageForm"
+                            hx-target="#storage-test-result" hx-swap="innerHTML">
+                        <i class="fas fa-plug-circle-bolt me-1"></i> Testar conexão
+                    </button>
+                </div>
+                <div id="storage-test-result"></div>
+            </form>
+        </div>
+
+        <!-- BACKUP DO SISTEMA -->
+        <div class="admin-card mb-3" id="backup">
+            <h6 class="fw-bold mb-1"><i class="fas fa-file-export me-2" style="color: var(--accent);"></i>Backup do Sistema (JSON)</h6>
+            <p class="small text-muted mb-3">
+                Exporta posts, biblioteca de links, turmas, disciplinas, chamados e anotações do calendário em um único
+                arquivo <code>.json</code>. A restauração <b>apenas adiciona</b> o que não existe — nada é sobrescrito ou apagado.
+            </p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100" style="background: var(--surface-2); border: 1px solid var(--border);">
+                        <div class="fw-bold small mb-1">⬇️ Exportar</div>
+                        <div class="small text-muted mb-3">Baixe um snapshot completo do conteúdo para guardar onde quiser.</div>
+                        <a href="{{ url_for('admin.backup_export') }}" class="btn btn-accent btn-sm">
+                            <i class="fas fa-download me-1"></i> Baixar backup JSON
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100" style="background: var(--surface-2); border: 1px solid var(--border);">
+                        <div class="fw-bold small mb-1">⬆️ Restaurar</div>
+                        <div class="small text-muted mb-2">Envie um backup gerado aqui para repor o conteúdo.</div>
+                        <form action="{{ url_for('admin.backup_import') }}" method="POST" enctype="multipart/form-data"
+                              onsubmit="return confirm('Restaurar este backup? Itens novos serão adicionados (nada é apagado).')"
+                              class="d-flex gap-2 flex-wrap align-items-center">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="file" name="backup_json" accept=".json,application/json" class="form-control form-control-sm" style="max-width: 260px;" required>
+                            <button type="submit" class="btn btn-soft btn-sm"><i class="fas fa-upload me-1"></i> Restaurar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RELATÓRIO DO CALENDÁRIO -->
+        <div class="admin-card" id="relatorio">
+            <h6 class="fw-bold mb-1"><i class="fas fa-print me-2" style="color: var(--accent);"></i>Relatório do Calendário (impressão)</h6>
+            <p class="small text-muted mb-3">
+                Gera uma página pronta para impressão com as atividades, prazos e anotações do mês —
+                geral ou filtrada por turma (anotações gerais entram em qualquer turma).
+            </p>
+
+            <form action="{{ url_for('admin.relatorio_calendario') }}" method="GET" target="_blank"
+                  class="row g-2 align-items-end">
+                <div class="col-md-4 col-7">
+                    <label class="form-label small fw-bold mb-1">Turma</label>
+                    <select name="turma_id" class="form-select form-select-sm">
+                        <option value="">🌐 Geral (todas as turmas)</option>
+                        {% for t in turmas %}
+                        <option value="{{ t.id }}">{{ t.nome }}{% if t.arquivada %} (arquivada){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 col-5">
+                    <label class="form-label small fw-bold mb-1">Mês</label>
+                    <input type="month" name="mes" class="form-control form-control-sm" value="{{ mes_atual }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-accent btn-sm w-100">
+                        <i class="fas fa-file-lines me-1"></i> Gerar relatório
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Mostra só os campos do provedor de storage selecionado
+  function syncProviderFields() {
+      var sel = document.querySelector('input[name="storage_provider"]:checked');
+      document.querySelectorAll('[data-provider-fields]').forEach(function (div) {
+          div.style.display = (sel && div.dataset.providerFields === sel.value) ? '' : 'none';
+      });
+      document.querySelectorAll('.provider-option').forEach(function (opt) {
+          opt.classList.toggle('selecionado', opt.querySelector('input').checked);
+      });
+  }
+  document.querySelectorAll('input[name="storage_provider"]').forEach(function (r) {
+      r.addEventListener('change', syncProviderFields);
+  });
+  syncProviderFields();
+</script>
+{% endblock %}

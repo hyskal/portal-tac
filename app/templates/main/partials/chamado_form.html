@@ -13,19 +13,26 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <div class="row g-2 mb-2">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
                 <label class="form-label small fw-bold mb-1" for="chamado-nome">Seu nome</label>
                 <input type="text" name="nome" id="chamado-nome" maxlength="100" required
                        class="form-control {% if errors.get('nome') %}is-invalid{% endif %}"
                        value="{{ form_data.get('nome', '') }}" placeholder="Como você se chama?">
                 {% if errors.get('nome') %}<div class="invalid-feedback">{{ errors.get('nome') }}</div>{% endif %}
             </div>
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
                 <label class="form-label small fw-bold mb-1" for="chamado-email">Seu e-mail</label>
                 <input type="email" name="email" id="chamado-email" maxlength="150" required
                        class="form-control {% if errors.get('email') %}is-invalid{% endif %}"
                        value="{{ form_data.get('email', '') }}" placeholder="voce@exemplo.com">
                 {% if errors.get('email') %}<div class="invalid-feedback">{{ errors.get('email') }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold mb-1" for="chamado-telefone">Telefone com DDD</label>
+                <input type="tel" name="telefone" id="chamado-telefone" maxlength="20" required
+                       inputmode="tel" class="form-control {% if errors.get('telefone') %}is-invalid{% endif %}"
+                       value="{{ form_data.get('telefone', '') }}" placeholder="(71) 99999-9999">
+                {% if errors.get('telefone') %}<div class="invalid-feedback">{{ errors.get('telefone') }}</div>{% endif %}
             </div>
         </div>
         <div class="mb-3">

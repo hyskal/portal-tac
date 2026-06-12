@@ -124,7 +124,9 @@ def criar_chamado(id):
 
     nome = (request.form.get('nome') or '').strip()
     email = (request.form.get('email') or '').strip()
+    telefone = (request.form.get('telefone') or '').strip()
     duvida = (request.form.get('duvida') or '').strip()
+    telefone_digitos = re.sub(r'\D', '', telefone)
 
     errors = {}
     if not nome:
@@ -133,11 +135,15 @@ def criar_chamado(id):
         errors['email'] = 'Informe seu e-mail.'
     elif not email_valido(email):
         errors['email'] = 'E-mail inválido. Confira o endereço digitado.'
+    if not telefone:
+        errors['telefone'] = 'Informe seu telefone com DDD.'
+    elif not (10 <= len(telefone_digitos) <= 13):
+        errors['telefone'] = 'Telefone inválido. Use DDD + número.'
     if not duvida:
         errors['duvida'] = 'Escreva sua dúvida.'
 
     if errors:
-        form_data = {'nome': nome, 'email': email, 'duvida': duvida}
+        form_data = {'nome': nome, 'email': email, 'telefone': telefone, 'duvida': duvida}
         if is_htmx():
             return render_template('main/partials/chamado_form.html', post=post,
                                    errors=errors, form_data=form_data)
@@ -145,7 +151,8 @@ def criar_chamado(id):
         return render_template('main/post.html', post=post, turma_contexto=turma_contexto,
                                abrir_chamado=True, errors=errors, form_data=form_data)
 
-    chamado = Chamado(post_id=post.id, nome=nome[:100], email=email[:150], duvida=duvida)
+    chamado = Chamado(post_id=post.id, nome=nome[:100], email=email[:150],
+                      telefone=telefone[:20], duvida=duvida)
     db.session.add(chamado)
     db.session.commit()
 
@@ -179,6 +186,11 @@ def time_left_filter(dt):
     diff_p = agora - dt
     if diff_p.days == 0: return "Postado hoje"
     return f"Postado há {diff_p.days} dias"
+
+@main_bp.app_template_filter('fone_digits')
+def fone_digits_filter(telefone):
+    """Só os dígitos do telefone (para links wa.me)."""
+    return re.sub(r'\D', '', telefone or '')
 
 @main_bp.app_template_filter('reading_time')
 def reading_time_filter(html_content):

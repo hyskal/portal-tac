@@ -55,9 +55,12 @@
                             <button type="button" data-cmd="blockquote" title="Citação"><i class="fas fa-quote-right"></i></button>
                             <span class="divider"></span>
                             <button type="button" data-cmd="link" title="Inserir link"><i class="fas fa-link"></i></button>
+                            <button type="button" data-cmd="image" title="Inserir imagem (upload)"><i class="fas fa-image"></i></button>
+                            <button type="button" data-cmd="imageUrl" title="Imagem por URL"><i class="fas fa-photo-film"></i></button>
                             <button type="button" data-cmd="code" title="Código inline"><i class="fas fa-code"></i></button>
                             <span class="divider"></span>
                             <button type="button" data-cmd="clear" title="Limpar formatação"><i class="fas fa-eraser"></i></button>
+                            <input type="file" id="editorImagemInput" accept=".png,.jpg,.jpeg,.gif,.webp" hidden>
                         </div>
                         <!-- Fallback: se o editor não carregar, o textarea continua utilizável -->
                         <textarea name="conteudo" id="conteudo" form="postForm">{{ post.conteudo if post else '' }}</textarea>

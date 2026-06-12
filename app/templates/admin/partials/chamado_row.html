@@ -6,7 +6,16 @@
         </a>
     </td>
     <td>{{ c.nome }}</td>
-    <td><a href="mailto:{{ c.email }}" class="text-decoration-none small">{{ c.email }}</a></td>
+    <td class="small">
+        <a href="mailto:{{ c.email }}" class="text-decoration-none d-block">{{ c.email }}</a>
+        {% if c.telefone %}
+        {% set dig = c.telefone|fone_digits %}
+        <a href="https://wa.me/{{ dig if dig|length > 11 else '55' ~ dig }}" target="_blank" rel="noopener"
+           class="text-decoration-none text-success" title="Chamar no WhatsApp">
+            <i class="fab fa-whatsapp"></i> {{ c.telefone }}
+        </a>
+        {% endif %}
+    </td>
     <td><span class="duvida-truncada d-inline-block small" title="{{ c.duvida }}">{{ c.duvida|truncate(70) }}</span></td>
     <td><small class="text-muted">{{ c.created_at.strftime('%d/%m %H:%M') }}</small></td>
     <td>

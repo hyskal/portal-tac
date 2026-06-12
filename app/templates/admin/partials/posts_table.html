@@ -25,6 +25,7 @@
                 <td class="text-center"><small class="fw-bold text-muted">{{ post.likes or 0 }}</small></td>
                 <td class="text-end">
                     <div class="btn-group">
+                        <a href="{{ url_for('main.ver_post', id=post.id) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success" title="Ver postagem (nova guia)"><i class="fas fa-eye"></i></a>
                         <button class="btn btn-sm btn-outline-dark" title="Copiar link"
                                 onclick="navigator.clipboard.writeText('{{ url_for('main.ver_post', id=post.id, _external=True) }}').then(() => showToast('Link copiado!', 'info'))"><i class="fas fa-link"></i></button>
                         <a href="{{ url_for('admin.gerenciar_post', id=post.id) }}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>

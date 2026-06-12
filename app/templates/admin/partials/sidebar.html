@@ -1,0 +1,47 @@
+{# Sidebar do admin — pagina='dashboard' usa abas Bootstrap; outras páginas usam links #}
+{% set no_dashboard = pagina == 'dashboard' %}
+<aside class="admin-sidebar">
+    <div class="sidebar-brand d-flex align-items-center gap-2 px-2 mb-4">
+        <span class="avatar-initial">{{ current_user.username[0]|upper }}</span>
+        <div>
+            <div class="fw-bold" style="font-size:.92rem;">{{ current_user.username }}</div>
+            <div class="text-muted" style="font-size:.72rem;">Professor</div>
+        </div>
+    </div>
+
+    <nav class="nav flex-column" {% if no_dashboard %}role="tablist"{% endif %}>
+        {% for aba_id, icone, rotulo in [
+            ('posts', 'fa-newspaper', 'Posts'),
+            ('calendario', 'fa-calendar-days', 'Calendário'),
+            ('chamados', 'fa-comments', 'Chamados'),
+            ('biblioteca', 'fa-book', 'Biblioteca'),
+            ('turmas', 'fa-users', 'Turmas'),
+            ('disciplinas', 'fa-shapes', 'Disciplinas')] %}
+            {% if no_dashboard %}
+            <button class="nav-link {% if loop.first %}active{% endif %}" data-bs-toggle="tab"
+                    data-bs-target="#pane-{{ aba_id }}" type="button" role="tab">
+                <i class="fas {{ icone }} fa-fw"></i> {{ rotulo }}
+                {% if aba_id == 'chamados' %}
+                <span class="badge badge-pendentes" data-chamados-badge {% if not chamados_pendentes %}style="display:none"{% endif %}>{{ chamados_pendentes }}</span>
+                {% endif %}
+            </button>
+            {% else %}
+            <a class="nav-link" href="{{ url_for('admin.dashboard') }}#{{ aba_id }}">
+                <i class="fas {{ icone }} fa-fw"></i> {{ rotulo }}
+                {% if aba_id == 'chamados' %}
+                <span class="badge badge-pendentes" data-chamados-badge {% if not chamados_pendentes %}style="display:none"{% endif %}>{{ chamados_pendentes }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
+        {% endfor %}
+
+        <a class="nav-link {% if pagina == 'sistema' %}active{% endif %}" href="{{ url_for('admin.sistema') }}">
+            <i class="fas fa-gear fa-fw"></i> Sistema
+        </a>
+    </nav>
+
+    <div class="sidebar-footer mt-auto pt-3 border-top mt-4">
+        <a class="nav-link" href="{{ url_for('main.index') }}"><i class="fas fa-eye fa-fw"></i> Ver site</a>
+        <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}"><i class="fas fa-right-from-bracket fa-fw"></i> Sair</a>
+    </div>
+</aside>

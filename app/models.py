@@ -18,6 +18,11 @@ link_turmas = db.Table('link_turmas',
     db.Column('turma_id', db.Integer, db.ForeignKey('turma.id'), primary_key=True)
 )
 
+anotacao_turmas = db.Table('anotacao_turmas',
+    db.Column('anotacao_id', db.Integer, db.ForeignKey('anotacao.id'), primary_key=True),
+    db.Column('turma_id', db.Integer, db.ForeignKey('turma.id'), primary_key=True)
+)
+
 # --- MODELOS ---
 
 class User(UserMixin, db.Model):
@@ -86,11 +91,24 @@ class Chamado(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(150), nullable=False)
+    telefone = db.Column(db.String(20), nullable=True)  # DDD + número
     duvida = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     resolvido = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     resposta_admin = db.Column(db.Text, nullable=True)
     respondido_at = db.Column(db.DateTime, nullable=True)
+
+class Anotacao(db.Model):
+    """Anotação/aviso do professor no calendário. Sem turmas vinculadas = geral."""
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    data = db.Column(db.Date, nullable=False)
+    hora = db.Column(db.Time, nullable=True)
+    cor = db.Column(db.String(7), default='#4F46E5')
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    turmas = db.relationship('Turma', secondary=anotacao_turmas, lazy='subquery',
+        backref=db.backref('anotacoes', lazy=True))
 
 class Configuracao(db.Model):
     """Par chave/valor para configurações editáveis pelo admin (ex.: storage)."""

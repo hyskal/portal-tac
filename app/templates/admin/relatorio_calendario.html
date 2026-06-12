@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório · {{ turma.nome if turma else 'Geral' }} · {{ mes_rotulo }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    @media print {
+        .no-print, .navbar-portal, #toast-area, #top-progress { display: none !important; }
+        body { background: #fff !important; }
+        .relatorio-card { border: none !important; box-shadow: none !important; padding: 0 !important; }
+    }
+    .relatorio-tabela td, .relatorio-tabela th { vertical-align: top; }
+    .relatorio-tabela .col-data { white-space: nowrap; width: 110px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <a href="{{ url_for('admin.sistema') }}#relatorio" class="btn btn-soft btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+        <button class="btn btn-accent" onclick="window.print()">
+            <i class="fas fa-print me-1"></i> Imprimir / Salvar PDF
+        </button>
+    </div>
+
+    <div class="admin-card relatorio-card p-4">
+        <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+            <div>
+                <div class="small text-muted text-uppercase fw-bold" style="letter-spacing:.5px;">Relatório do Calendário</div>
+                <h1 class="h4 fw-bold mb-1 mt-1">
+                    {% if turma %}
+                        <span style="border-left: 5px solid {{ turma.cor }}; padding-left: 8px;">{{ turma.nome }}</span>
+                    {% else %}
+                        🌐 Geral — todas as turmas
+                    {% endif %}
+                </h1>
+                <div class="text-muted">{{ mes_rotulo }}</div>
+            </div>
+            <div class="text-end small text-muted">
+                <div><i class="fas fa-graduation-cap me-1"></i>Portal Acadêmico</div>
+                <div>Professor: <b>{{ professor }}</b></div>
+                <div>Gerado em {{ gerado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+            </div>
+        </div>
+
+        {% if eventos %}
+        {% set dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] %}
+        <table class="table relatorio-tabela">
+            <thead>
+                <tr>
+                    <th class="col-data">Data</th>
+                    <th style="width:120px;">Tipo</th>
+                    <th>Título / Detalhes</th>
+                    <th style="width:160px;">Turmas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in eventos %}
+                <tr>
+                    <td class="col-data">
+                        <b>{{ e.quando.strftime('%d/%m') }}</b>
+                        <div class="small text-muted">{{ dias_semana[e.quando.weekday()] }}{% if e.hora %} · {{ e.hora }}{% endif %}</div>
+                    </td>
+                    <td><span class="small fw-bold">{{ e.tipo }}</span></td>
+                    <td>
+                        <div class="fw-bold">{{ e.titulo }}</div>
+                        {% if e.detalhe %}<div class="small text-muted" style="white-space: pre-wrap;">{{ e.detalhe|truncate(220) }}</div>{% endif %}
+                    </td>
+                    <td class="small">{{ e.turmas|join(', ') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="small text-muted mt-2">{{ eventos|length }} item(ns) no período.</div>
+        {% else %}
+        <div class="empty-state border-0">
+            <span class="emoji">🗓️</span>
+            <h6 class="fw-bold text-dark">Nada agendado neste mês</h6>
+            <p class="small mb-0">Nenhuma atividade, prazo ou anotação encontrada para o período selecionado.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

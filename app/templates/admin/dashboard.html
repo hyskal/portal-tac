@@ -5,46 +5,7 @@
 {% block content %}
 <div class="admin-shell">
 
-    <!-- SIDEBAR (desktop: fixa à esquerda / mobile: barra horizontal) -->
-    <aside class="admin-sidebar">
-        <div class="sidebar-brand d-flex align-items-center gap-2 px-2 mb-4">
-            <span class="avatar-initial">{{ current_user.username[0]|upper }}</span>
-            <div>
-                <div class="fw-bold" style="font-size:.92rem;">{{ current_user.username }}</div>
-                <div class="text-muted" style="font-size:.72rem;">Professor</div>
-            </div>
-        </div>
-
-        <nav class="nav flex-column" role="tablist">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-posts" type="button" role="tab">
-                <i class="fas fa-newspaper fa-fw"></i> Posts
-            </button>
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-calendario" type="button" role="tab">
-                <i class="fas fa-calendar-days fa-fw"></i> Calendário
-            </button>
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-chamados" type="button" role="tab">
-                <i class="fas fa-comments fa-fw"></i> Chamados
-                <span class="badge badge-pendentes" data-chamados-badge {% if not chamados_pendentes %}style="display:none"{% endif %}>{{ chamados_pendentes }}</span>
-            </button>
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-biblioteca" type="button" role="tab">
-                <i class="fas fa-book fa-fw"></i> Biblioteca
-            </button>
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-turmas" type="button" role="tab">
-                <i class="fas fa-users fa-fw"></i> Turmas
-            </button>
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-disciplinas" type="button" role="tab">
-                <i class="fas fa-shapes fa-fw"></i> Disciplinas
-            </button>
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-sistema" type="button" role="tab">
-                <i class="fas fa-gear fa-fw"></i> Sistema
-            </button>
-        </nav>
-
-        <div class="sidebar-footer mt-auto pt-3 border-top mt-4">
-            <a class="nav-link" href="{{ url_for('main.index') }}"><i class="fas fa-eye fa-fw"></i> Ver site</a>
-            <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}"><i class="fas fa-right-from-bracket fa-fw"></i> Sair</a>
-        </div>
-    </aside>
+    {% with pagina = 'dashboard' %}{% include 'admin/partials/sidebar.html' %}{% endwith %}
 
     <!-- ÁREA PRINCIPAL -->
     <main class="admin-main">
@@ -69,6 +30,7 @@
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalTurma">Nova Turma</a></li>
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalDisciplina">Nova Disciplina</a></li>
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalLink">Novo Link</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="abrirModalAnotacao(null, ''); return false;">Nova Anotação 📝</a></li>
                     </ul>
                 </div>
                 <a href="{{ url_for('admin.gerenciar_post') }}" class="btn btn-accent">
@@ -128,6 +90,13 @@
             <!-- ===== CALENDÁRIO ===== -->
             <div class="tab-pane fade" id="pane-calendario" role="tabpanel">
                 <div class="admin-card mb-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <small class="text-muted"><i class="fas fa-circle-info me-1"></i>Clique em um dia para criar uma anotação; clique numa anotação para editar.</small>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('admin.sistema') }}#relatorio" class="btn btn-soft btn-sm"><i class="fas fa-print me-1"></i>Relatório</a>
+                            <button class="btn btn-accent btn-sm" onclick="abrirModalAnotacao(null, '')"><i class="fas fa-plus me-1"></i>Anotação</button>
+                        </div>
+                    </div>
                     <div id='calendar-admin' style="min-height: 500px;"></div>
                 </div>
                 <div class="admin-card" style="border-style: dashed;">
@@ -223,163 +192,6 @@
                 </div>
             </div>
 
-            <!-- ===== SISTEMA (Storage + Backup) ===== -->
-            <div class="tab-pane fade" id="pane-sistema" role="tabpanel">
-
-                <!-- ARMAZENAMENTO DE ANEXOS -->
-                <div class="admin-card mb-3">
-                    <h6 class="fw-bold mb-1"><i class="fas fa-cloud-arrow-up me-2" style="color: var(--accent);"></i>Armazenamento de Anexos</h6>
-                    <p class="small text-muted mb-3">
-                        Escolha onde os anexos dos posts são guardados. Se a API escolhida não responder na hora
-                        do upload, o arquivo é <b>salvo localmente no servidor</b> (fallback automático) e você é avisado.
-                    </p>
-
-                    <form id="storageForm" action="{{ url_for('admin.salvar_storage') }}" method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                        <div class="row g-2 mb-3">
-                            <div class="col-12 col-md-6 col-xl-3">
-                                <label class="provider-option {% if storage.provider == 'local' %}selecionado{% endif %}">
-                                    <input type="radio" name="storage_provider" value="local" {% if storage.provider == 'local' %}checked{% endif %}>
-                                    <span><b>💾 Local</b><br><small class="text-muted">Pasta do servidor (padrão)</small></span>
-                                </label>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-3">
-                                <label class="provider-option {% if storage.provider == 'sml' %}selecionado{% endif %}">
-                                    <input type="radio" name="storage_provider" value="sml" {% if storage.provider == 'sml' %}checked{% endif %}>
-                                    <span><b>🔥 SML Storage API</b><br><small class="text-muted">Firebase (API própria)</small></span>
-                                </label>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-3">
-                                <label class="provider-option {% if storage.provider == 'supabase' %}selecionado{% endif %}">
-                                    <input type="radio" name="storage_provider" value="supabase" {% if storage.provider == 'supabase' %}checked{% endif %}>
-                                    <span><b>⚡ Supabase</b><br><small class="text-muted">Supabase Storage</small></span>
-                                </label>
-                            </div>
-                            <div class="col-12 col-md-6 col-xl-3">
-                                <label class="provider-option {% if storage.provider == 'cloudinary' %}selecionado{% endif %}">
-                                    <input type="radio" name="storage_provider" value="cloudinary" {% if storage.provider == 'cloudinary' %}checked{% endif %}>
-                                    <span><b>☁️ Cloudinary</b><br><small class="text-muted">Via variáveis de ambiente</small></span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div data-provider-fields="local" class="small text-muted mb-2" style="display:none;">
-                            Os arquivos ficam em <code>static/uploads/posts/AAAA-MM/</code>. Nenhuma chave necessária.
-                        </div>
-
-                        <div data-provider-fields="sml" style="display:none;">
-                            <div class="row g-2 mb-2">
-                                <div class="col-md-5">
-                                    <label class="form-label small fw-bold mb-1">Base URL</label>
-                                    <input type="text" name="sml_base_url" class="form-control form-control-sm"
-                                           value="{{ storage.sml_base_url }}" placeholder="{{ storage.sml_base_url_padrao }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-bold mb-1">Chave de API (x-api-key)</label>
-                                    <input type="password" name="sml_api_key" class="form-control form-control-sm"
-                                           autocomplete="new-password"
-                                           placeholder="{{ '•••••• chave definida — vazio mantém' if storage.sml_api_key_definida else 'SUA_CHAVE' }}">
-                                    {% if storage.sml_api_key_definida %}
-                                    <div class="form-check mt-1">
-                                        <input class="form-check-input" type="checkbox" name="limpar_sml_api_key" id="limpar_sml_api_key">
-                                        <label class="form-check-label text-muted" for="limpar_sml_api_key" style="font-size:.74rem;">Limpar chave salva</label>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-bold mb-1">Projeto</label>
-                                    <input type="text" name="sml_projeto" class="form-control form-control-sm"
-                                           value="{{ storage.sml_projeto }}" placeholder="portal-tac">
-                                </div>
-                            </div>
-                            <div class="small text-muted mb-2">Fluxo de 3 passos (getUploadUrl → PUT → confirmUpload). Limite de 10 MB por arquivo — acima disso o anexo cai no salvamento local.</div>
-                        </div>
-
-                        <div data-provider-fields="supabase" style="display:none;">
-                            <div class="row g-2 mb-2">
-                                <div class="col-md-5">
-                                    <label class="form-label small fw-bold mb-1">URL do projeto</label>
-                                    <input type="text" name="supabase_url" class="form-control form-control-sm"
-                                           value="{{ storage.supabase_url }}" placeholder="https://xxxx.supabase.co">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-bold mb-1">Chave (service_role)</label>
-                                    <input type="password" name="supabase_key" class="form-control form-control-sm"
-                                           autocomplete="new-password"
-                                           placeholder="{{ '•••••• chave definida — vazio mantém' if storage.supabase_key_definida else 'eyJhbGciOi...' }}">
-                                    {% if storage.supabase_key_definida %}
-                                    <div class="form-check mt-1">
-                                        <input class="form-check-input" type="checkbox" name="limpar_supabase_key" id="limpar_supabase_key">
-                                        <label class="form-check-label text-muted" for="limpar_supabase_key" style="font-size:.74rem;">Limpar chave salva</label>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-bold mb-1">Bucket</label>
-                                    <input type="text" name="supabase_bucket" class="form-control form-control-sm"
-                                           value="{{ storage.supabase_bucket }}" placeholder="portal">
-                                </div>
-                            </div>
-                            <div class="small text-muted mb-2">O bucket precisa ser <b>público</b> para os alunos abrirem os anexos.</div>
-                        </div>
-
-                        <div data-provider-fields="cloudinary" class="small mb-2" style="display:none;">
-                            {% if storage.cloudinary_env %}
-                                <span class="text-success"><i class="fas fa-circle-check me-1"></i>Variáveis CLOUDINARY_* detectadas no ambiente do servidor.</span>
-                            {% else %}
-                                <span class="text-danger"><i class="fas fa-circle-xmark me-1"></i>Variáveis CLOUDINARY_* não configuradas — uploads cairão no salvamento local.</span>
-                            {% endif %}
-                        </div>
-
-                        <div class="d-flex gap-2 flex-wrap mt-2">
-                            <button type="submit" class="btn btn-accent btn-sm"><i class="fas fa-save me-1"></i> Salvar configurações</button>
-                            <button type="button" class="btn btn-soft btn-sm"
-                                    hx-post="{{ url_for('admin.testar_storage') }}"
-                                    hx-include="#storageForm"
-                                    hx-target="#storage-test-result" hx-swap="innerHTML">
-                                <i class="fas fa-plug-circle-bolt me-1"></i> Testar conexão
-                            </button>
-                        </div>
-                        <div id="storage-test-result"></div>
-                    </form>
-                </div>
-
-                <!-- BACKUP DO SISTEMA -->
-                <div class="admin-card">
-                    <h6 class="fw-bold mb-1"><i class="fas fa-file-export me-2" style="color: var(--accent);"></i>Backup do Sistema (JSON)</h6>
-                    <p class="small text-muted mb-3">
-                        Exporta posts, biblioteca de links, turmas, disciplinas e chamados em um único arquivo
-                        <code>.json</code>. A restauração <b>apenas adiciona</b> o que não existe — nada é sobrescrito ou apagado.
-                    </p>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="p-3 rounded-3 h-100" style="background: var(--surface-2); border: 1px solid var(--border);">
-                                <div class="fw-bold small mb-1">⬇️ Exportar</div>
-                                <div class="small text-muted mb-3">Baixe um snapshot completo do conteúdo para guardar onde quiser.</div>
-                                <a href="{{ url_for('admin.backup_export') }}" class="btn btn-accent btn-sm">
-                                    <i class="fas fa-download me-1"></i> Baixar backup JSON
-                                </a>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="p-3 rounded-3 h-100" style="background: var(--surface-2); border: 1px solid var(--border);">
-                                <div class="fw-bold small mb-1">⬆️ Restaurar</div>
-                                <div class="small text-muted mb-2">Envie um backup gerado aqui para repor o conteúdo.</div>
-                                <form action="{{ url_for('admin.backup_import') }}" method="POST" enctype="multipart/form-data"
-                                      onsubmit="return confirm('Restaurar este backup? Itens novos serão adicionados (nada é apagado).')"
-                                      class="d-flex gap-2 flex-wrap align-items-center">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="file" name="backup_json" accept=".json,application/json" class="form-control form-control-sm" style="max-width: 260px;" required>
-                                    <button type="submit" class="btn btn-soft btn-sm"><i class="fas fa-upload me-1"></i> Restaurar</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </main>
 </div>
@@ -387,6 +199,67 @@
 <!-- MODAL HORÁRIO -->
 <div class="modal fade" id="modalVerHorario" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header border-0"><h5 class="modal-title">📅 Meu Horário</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center p-0"><img src="{{ url_for("static", filename="uploads/horario_professor.png") }}?t={{ now.timestamp() }}" class="img-fluid rounded" alt="Horário"></div></div></div>
+</div>
+
+<!-- MODAL ANOTAÇÃO DO CALENDÁRIO -->
+<div class="modal fade" id="modalAnotacao" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="formAnotacao" method="POST" action="{{ url_for('admin.nova_anotacao') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header" style="background: var(--accent); color: #fff;">
+                    <h5 class="mb-0" id="tituloModalAnotacao">📝 Nova Anotação</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Título</label>
+                        <input type="text" name="titulo" id="anotacaoTitulo" class="form-control" maxlength="200" required
+                               placeholder="Ex: Conselho de classe / Levar provas impressas">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-5">
+                            <label class="form-label small fw-bold">Data</label>
+                            <input type="date" name="data" id="anotacaoData" class="form-control" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-bold">Hora <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input type="time" name="hora" id="anotacaoHora" class="form-control">
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label small fw-bold">Cor</label>
+                            <input type="color" name="cor" id="anotacaoCor" class="form-control form-control-color w-100" value="#4F46E5">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Descrição <span class="text-muted fw-normal">(opcional)</span></label>
+                        <textarea name="descricao" id="anotacaoDescricao" class="form-control" rows="2" placeholder="Detalhes da anotação..."></textarea>
+                    </div>
+                    <label class="form-label small fw-bold mb-1">Vincular a turmas</label>
+                    <div class="card p-2 bg-white border" style="max-height: 130px; overflow-y: auto; border-radius: var(--radius-sm);">
+                        {% for t in turmas %}
+                        <div class="form-check">
+                            <input class="form-check-input anotacao-turma-chk" type="checkbox" name="turmas" value="{{ t.id }}" id="anott{{ t.id }}">
+                            <label class="form-check-label small" for="anott{{ t.id }}">
+                                <span class="badge" style="background-color: {{ t.cor }}; width: 8px; height: 8px; display: inline-block; border-radius: 50%;"></span>
+                                {{ t.nome }}{% if t.arquivada %} <span class="badge-arquivada">Arquivada</span>{% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:.74rem;">Sem turma marcada = anotação <b>geral</b> (vale para todas). Marque uma ou várias para vincular.</div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnExcluirAnotacao" style="display:none;"
+                            onclick="excluirAnotacao()"><i class="fas fa-trash me-1"></i>Excluir</button>
+                    <button type="submit" class="btn btn-accent">Salvar Anotação</button>
+                </div>
+            </form>
+            <form id="formExcluirAnotacao" method="POST" action="" class="d-none">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- MODAIS DE CADASTRO -->
@@ -398,12 +271,70 @@
 
 {% block scripts %}
 <script>
+  var URL_NOVA_ANOTACAO = {{ url_for('admin.nova_anotacao')|tojson }};
+  var anotacaoAtualId = null;
+
+  function abrirModalAnotacao(props, dataStr) {
+      var form = document.getElementById('formAnotacao');
+      var btnExcluir = document.getElementById('btnExcluirAnotacao');
+      document.querySelectorAll('.anotacao-turma-chk').forEach(c => c.checked = false);
+
+      if (props && props.anotacao_id) {
+          // Edição
+          anotacaoAtualId = props.anotacao_id;
+          form.action = '/admin/anotacao/' + props.anotacao_id + '/editar';
+          document.getElementById('tituloModalAnotacao').textContent = '✏️ Editar Anotação';
+          document.getElementById('anotacaoTitulo').value = props.titulo || '';
+          document.getElementById('anotacaoData').value = props.data || '';
+          document.getElementById('anotacaoHora').value = props.hora || '';
+          document.getElementById('anotacaoCor').value = props.cor || '#4F46E5';
+          document.getElementById('anotacaoDescricao').value = props.descricao || '';
+          (props.turma_ids || []).forEach(function (tid) {
+              var chk = document.getElementById('anott' + tid);
+              if (chk) chk.checked = true;
+          });
+          btnExcluir.style.display = '';
+      } else {
+          // Nova
+          anotacaoAtualId = null;
+          form.action = URL_NOVA_ANOTACAO;
+          document.getElementById('tituloModalAnotacao').textContent = '📝 Nova Anotação';
+          document.getElementById('anotacaoTitulo').value = '';
+          document.getElementById('anotacaoData').value = (dataStr || '').slice(0, 10);
+          document.getElementById('anotacaoHora').value = '';
+          document.getElementById('anotacaoCor').value = '#4F46E5';
+          document.getElementById('anotacaoDescricao').value = '';
+          btnExcluir.style.display = 'none';
+      }
+      new bootstrap.Modal(document.getElementById('modalAnotacao')).show();
+  }
+
+  function excluirAnotacao() {
+      if (!anotacaoAtualId) return;
+      if (!confirm('Excluir esta anotação do calendário?')) return;
+      var form = document.getElementById('formExcluirAnotacao');
+      form.action = '/admin/anotacao/' + anotacaoAtualId + '/excluir';
+      form.submit();
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
-    // FullCalendar
+    // FullCalendar com anotações clicáveis/editáveis
     var calendarEl = document.getElementById('calendar-admin');
     if (calendarEl) {
         var calendar = new FullCalendar.Calendar(calendarEl, {
-          initialView: 'dayGridMonth', locale: 'pt-br', events: '/api/eventos-calendario', height: 'auto'
+          initialView: 'dayGridMonth', locale: 'pt-br',
+          events: '/api/eventos-calendario', height: 'auto',
+          dateClick: function (info) {
+              abrirModalAnotacao(null, info.dateStr);
+          },
+          eventClick: function (info) {
+              var p = info.event.extendedProps || {};
+              if (p.tipo === 'anotacao') {
+                  info.jsEvent.preventDefault();
+                  abrirModalAnotacao(p, '');
+              }
+              // posts seguem o url padrão (editar post)
+          }
         });
         document.querySelector('button[data-bs-target="#pane-calendario"]').addEventListener('shown.bs.tab', function () { calendar.render(); });
     }
@@ -427,21 +358,6 @@
             chip.classList.add('active');
         });
     });
-
-    // Aba Sistema: mostra só os campos do provedor de storage selecionado
-    function syncProviderFields() {
-        var sel = document.querySelector('input[name="storage_provider"]:checked');
-        document.querySelectorAll('[data-provider-fields]').forEach(function (div) {
-            div.style.display = (sel && div.dataset.providerFields === sel.value) ? '' : 'none';
-        });
-        document.querySelectorAll('.provider-option').forEach(function (opt) {
-            opt.classList.toggle('selecionado', opt.querySelector('input').checked);
-        });
-    }
-    document.querySelectorAll('input[name="storage_provider"]').forEach(function (r) {
-        r.addEventListener('change', syncProviderFields);
-    });
-    syncProviderFields();
   });
 
   // Badge de chamados pendentes (evento HX-Trigger do servidor)

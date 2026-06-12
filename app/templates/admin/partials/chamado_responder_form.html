@@ -5,6 +5,10 @@
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
                 <div class="small">
                     <b>{{ c.nome }}</b> · <a href="mailto:{{ c.email }}">{{ c.email }}</a>
+                    {% if c.telefone %}
+                    {% set dig = c.telefone|fone_digits %}
+                    · <a href="https://wa.me/{{ dig if dig|length > 11 else '55' ~ dig }}" target="_blank" rel="noopener" class="text-success"><i class="fab fa-whatsapp"></i> {{ c.telefone }}</a>
+                    {% endif %}
                     · {{ c.created_at.strftime('%d/%m/%Y %H:%M') }}
                     {% if c.post %} · Post: <a href="{{ url_for('main.ver_post', id=c.post_id) }}" target="_blank">{{ c.post.titulo|truncate(40) }}</a>{% endif %}
                 </div>

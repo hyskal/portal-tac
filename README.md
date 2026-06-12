@@ -20,8 +20,13 @@ final.
 | **Curtidas** | `POST /api/post/<id>/like` sem login; cookie `liked_<id>` evita duplo like (segundo clique desfaz). |
 | **Chamados de dúvida** | Toggle "Permitir chamado de dúvida" por post. Aluno envia nome/e-mail/dúvida; professor responde na aba **Chamados** do dashboard (badge com pendentes). |
 | **Arquivar turma** | `POST /admin/turma/<id>/arquivar` alterna o estado. Turmas arquivadas somem da home e ficam acinzentadas no admin com badge "Arquivada". |
-| **Storage plugável** | Aba **Sistema** do dashboard: escolha onde os anexos são guardados — **Local** (pasta do servidor), **SML Storage API** (Firebase, fluxo getUploadUrl → PUT → confirmUpload), **Supabase Storage** (REST) ou **Cloudinary** (env). Se a API não responder, o upload **cai automaticamente no salvamento local** e o admin é avisado. Botão "Testar conexão" valida as credenciais antes de salvar. |
-| **Backup JSON** | Aba **Sistema**: exporta posts, biblioteca de links, turmas, disciplinas e chamados em um `.json`; a restauração só adiciona o que não existe (deduplicada por chaves naturais — nada é sobrescrito/apagado). |
+| **Painel Sistema** | Página própria (`/admin/sistema`) com a configuração da API de storage, backups JSON e o gerador de relatório do calendário. |
+| **Storage plugável** | Escolha onde anexos e imagens são guardados — **Local** (pasta do servidor), **SML Storage API** (Firebase, fluxo getUploadUrl → PUT → confirmUpload), **Supabase Storage** (REST) ou **Cloudinary** (env). Se a API não responder, o upload **cai automaticamente no salvamento local** e o admin é avisado. Botão "Testar conexão" valida as credenciais antes de salvar. |
+| **Backup JSON** | Exporta posts, biblioteca de links, turmas, disciplinas, chamados e anotações em um `.json`; a restauração só adiciona o que não existe (deduplicada por chaves naturais — nada é sobrescrito/apagado). |
+| **Anotações no calendário** | Clique em um dia do calendário admin para criar um aviso/anotação (título, descrição, hora e cor); clique na anotação para editar ou excluir. Cada anotação pode ser **geral** ou vinculada a **uma ou várias turmas**. |
+| **Relatório imprimível** | `/admin/relatorio-calendario` gera a agenda do mês (atividades, prazos e anotações) — geral ou por turma — pronta para imprimir/salvar em PDF. |
+| **Imagens no editor** | Botão de imagem no TipTap faz upload pelo storage configurado (ou insere por URL) e posiciona a imagem no corpo do post. |
+| **Telefone no chamado** | O estudante informa DDD + telefone (validado); o painel de chamados mostra o contato com link direto para o WhatsApp. |
 | **Toasts** | Feedback via header `HX-Trigger` (`showToast`) + flash messages convertidas em snackbar. |
 | **Redesign** | Tokens de design (índigo `#4F46E5`), fonte Inter, dashboard com sidebar fixa, formulário de post em 2 colunas com sidebar sticky, bottom-nav mobile, hero da turma. |
 
@@ -66,6 +71,7 @@ O botão "Testar conexão" usa a chave salva quando o campo está em branco.
 - `e614d240e2fd` — baseline com o schema original
 - `4845a79d3a2b` — v2: `post.likes`, `post.permite_chamado`, `turma.arquivada`, tabela `chamado` (com `server_default` para backfill seguro)
 - `c1e17f34506b` — tabela `configuracao` (storage plugável)
+- `1a0deb74028a` — tabelas `anotacao`/`anotacao_turmas` (calendário) e `chamado.telefone`
 
 **Banco novo:** apenas `flask db upgrade`.
 **Banco existente (produção, criado antes das migrations):** marque a baseline e aplique só o delta v2:

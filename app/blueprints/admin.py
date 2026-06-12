@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, make_response
-from flask_login import login_required
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, make_response, jsonify
+from flask_login import login_required, current_user
 from datetime import datetime
 import json
 import os
 from app.extensions import db
-from app.models import Turma, Post, Link, Disciplina, Chamado
+from app.models import Turma, Post, Link, Disciplina, Chamado, Anotacao
 from app.services.query_service import filtrar_posts
 from app.services import storage_service, backup_service
 from app.utils import is_htmx, hx_toast, hx_event
@@ -12,6 +12,7 @@ from app.utils import is_htmx, hx_toast, hx_event
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'doc', 'docx', 'xls', 'xlsx'}
+IMAGEM_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 def arquivo_permitido(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -39,20 +40,9 @@ def dashboard():
     path_horario = os.path.join(current_app.root_path, 'static', 'uploads', 'horario_professor.png')
     tem_horario = os.path.exists(path_horario)
 
-    # Configurações de armazenamento (aba Sistema).
-    # As chaves de API nunca são enviadas ao template — só um booleano
-    # indicando que existem (campo vazio no form = manter a atual).
-    storage = {chave: storage_service.get_config(chave) for chave in (
-        'sml_base_url', 'sml_projeto', 'supabase_url', 'supabase_bucket')}
-    storage['sml_api_key_definida'] = bool(storage_service.get_config('sml_api_key'))
-    storage['supabase_key_definida'] = bool(storage_service.get_config('supabase_key'))
-    storage['provider'] = storage_service.provider_ativo()
-    storage['cloudinary_env'] = bool(current_app.config.get('CLOUDINARY_CLOUD_NAME'))
-    storage['sml_base_url_padrao'] = storage_service.SML_BASE_URL_PADRAO
-
     return render_template('admin/dashboard.html', posts=posts, turmas=turmas, links=links,
                            disciplinas=disciplinas, chamados=chamados,
-                           chamados_pendentes=chamados_pendentes, storage=storage,
+                           chamados_pendentes=chamados_pendentes,
                            tem_horario=tem_horario, now=datetime.now())
 
 @admin_bp.route('/upload-horario', methods=['POST'])
@@ -237,6 +227,148 @@ def responder_chamado(id):
     flash('Resposta registrada!', 'success')
     return redirect(url_for('admin.dashboard') + '#chamados')
 
+# --- ANOTAÇÕES DO CALENDÁRIO ---
+
+def _aplicar_form_anotacao(anotacao):
+    anotacao.titulo = (request.form.get('titulo') or '').strip()[:200]
+    anotacao.descricao = (request.form.get('descricao') or '').strip() or None
+    anotacao.cor = request.form.get('cor') or '#4F46E5'
+    anotacao.data = datetime.strptime(request.form.get('data'), '%Y-%m-%d').date()
+    hora = (request.form.get('hora') or '').strip()
+    anotacao.hora = datetime.strptime(hora, '%H:%M').time() if hora else None
+    anotacao.turmas = [Turma.query.get(int(tid)) for tid in request.form.getlist('turmas')
+                       if Turma.query.get(int(tid))]
+
+@admin_bp.route('/anotacao/nova', methods=['POST'])
+@login_required
+def nova_anotacao():
+    if not (request.form.get('titulo') or '').strip() or not request.form.get('data'):
+        flash('Título e data são obrigatórios.', 'danger')
+        return redirect(url_for('admin.dashboard') + '#calendario')
+    anotacao = Anotacao()
+    _aplicar_form_anotacao(anotacao)
+    db.session.add(anotacao)
+    db.session.commit()
+    flash('Anotação adicionada ao calendário! 📝', 'success')
+    return redirect(url_for('admin.dashboard') + '#calendario')
+
+@admin_bp.route('/anotacao/<int:id>/editar', methods=['POST'])
+@login_required
+def editar_anotacao(id):
+    anotacao = Anotacao.query.get_or_404(id)
+    if not (request.form.get('titulo') or '').strip() or not request.form.get('data'):
+        flash('Título e data são obrigatórios.', 'danger')
+        return redirect(url_for('admin.dashboard') + '#calendario')
+    _aplicar_form_anotacao(anotacao)
+    db.session.commit()
+    flash('Anotação atualizada!', 'success')
+    return redirect(url_for('admin.dashboard') + '#calendario')
+
+@admin_bp.route('/anotacao/<int:id>/excluir', methods=['POST'])
+@login_required
+def excluir_anotacao(id):
+    anotacao = Anotacao.query.get_or_404(id)
+    db.session.delete(anotacao)
+    db.session.commit()
+    flash('Anotação removida do calendário.', 'info')
+    return redirect(url_for('admin.dashboard') + '#calendario')
+
+# --- UPLOAD DE IMAGEM DO EDITOR (TipTap) ---
+
+@admin_bp.route('/api/upload-imagem', methods=['POST'])
+@login_required
+def upload_imagem():
+    arq = request.files.get('imagem')
+    if not arq or not arq.filename:
+        return jsonify({'success': False, 'error': 'Nenhuma imagem enviada.'}), 400
+    ext = arq.filename.rsplit('.', 1)[-1].lower() if '.' in arq.filename else ''
+    if ext not in IMAGEM_EXTENSIONS:
+        return jsonify({'success': False, 'error': 'Formato inválido. Use png, jpg, gif ou webp.'}), 400
+    d = storage_service.upload_anexo(arq)
+    if not d:
+        return jsonify({'success': False, 'error': 'Falha ao salvar a imagem.'}), 500
+    return jsonify({'success': True, 'url': d['url'], 'fallback': bool(d.get('fallback'))})
+
+# --- PAINEL SISTEMA (storage/API, backups, relatórios) ---
+
+def _storage_ctx():
+    """Config de armazenamento para o painel Sistema. As chaves de API nunca
+    vão ao template — só um booleano indicando que existem."""
+    storage = {chave: storage_service.get_config(chave) for chave in (
+        'sml_base_url', 'sml_projeto', 'supabase_url', 'supabase_bucket')}
+    storage['sml_api_key_definida'] = bool(storage_service.get_config('sml_api_key'))
+    storage['supabase_key_definida'] = bool(storage_service.get_config('supabase_key'))
+    storage['provider'] = storage_service.provider_ativo()
+    storage['cloudinary_env'] = bool(current_app.config.get('CLOUDINARY_CLOUD_NAME'))
+    storage['sml_base_url_padrao'] = storage_service.SML_BASE_URL_PADRAO
+    return storage
+
+@admin_bp.route('/sistema')
+@login_required
+def sistema():
+    return render_template('admin/sistema.html',
+                           storage=_storage_ctx(),
+                           turmas=Turma.query.order_by(Turma.arquivada, Turma.nome).all(),
+                           chamados_pendentes=contar_chamados_pendentes(),
+                           mes_atual=datetime.now().strftime('%Y-%m'))
+
+@admin_bp.route('/relatorio-calendario')
+@login_required
+def relatorio_calendario():
+    turma_id = request.args.get('turma_id', type=int)
+    turma = Turma.query.get_or_404(turma_id) if turma_id else None
+
+    mes_str = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    try:
+        ano, mes = int(mes_str[:4]), int(mes_str[5:7])
+        inicio = datetime(ano, mes, 1)
+    except ValueError:
+        agora = datetime.now()
+        ano, mes = agora.year, agora.month
+        inicio = datetime(ano, mes, 1)
+    fim = datetime(ano + 1, 1, 1) if mes == 12 else datetime(ano, mes + 1, 1)
+
+    eventos = []
+
+    posts_q = Post.query.filter(Post.deleted_at == None,
+                                (Post.prazo != None) | (Post.tipo == 'atividade'))
+    if turma:
+        posts_q = posts_q.filter(Post.turmas.contains(turma))
+    for p in posts_q.all():
+        quando = p.prazo if p.prazo else p.scheduled_at
+        if inicio <= quando < fim:
+            eventos.append({
+                'quando': quando,
+                'hora': quando.strftime('%H:%M'),
+                'tipo': '📋 Atividade' if p.tipo == 'atividade' else '⏰ Prazo',
+                'titulo': p.titulo,
+                'turmas': [t.nome for t in p.turmas] or ['—'],
+                'detalhe': 'Prazo de entrega' if p.prazo else 'Publicação agendada',
+            })
+
+    for a in Anotacao.query.all():
+        # Anotação geral (sem turmas) vale para qualquer turma
+        if turma and a.turmas and turma not in a.turmas:
+            continue
+        quando = datetime.combine(a.data, a.hora) if a.hora else datetime.combine(a.data, datetime.min.time())
+        if inicio <= quando < fim:
+            eventos.append({
+                'quando': quando,
+                'hora': a.hora.strftime('%H:%M') if a.hora else '',
+                'tipo': '📝 Anotação',
+                'titulo': a.titulo,
+                'turmas': [t.nome for t in a.turmas] or ['Geral'],
+                'detalhe': a.descricao or '',
+            })
+
+    eventos.sort(key=lambda e: e['quando'])
+    meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+    return render_template('admin/relatorio_calendario.html',
+                           eventos=eventos, turma=turma,
+                           mes_rotulo=f'{meses[mes]} de {ano}', mes_valor=f'{ano}-{mes:02d}',
+                           professor=current_user.username, gerado_em=datetime.now())
+
 # --- SISTEMA: ARMAZENAMENTO DE ARQUIVOS ---
 
 @admin_bp.route('/storage', methods=['POST'])
@@ -260,7 +392,7 @@ def salvar_storage():
     nomes = {'local': 'Salvamento local', 'sml': 'SML Storage API',
              'supabase': 'Supabase Storage', 'cloudinary': 'Cloudinary'}
     flash(f'Armazenamento configurado: {nomes[provider]}. Se a API falhar, os anexos caem no salvamento local.', 'success')
-    return redirect(url_for('admin.dashboard') + '#sistema')
+    return redirect(url_for('admin.sistema'))
 
 @admin_bp.route('/storage/testar', methods=['POST'])
 @login_required
@@ -287,14 +419,15 @@ def backup_import():
     arquivo = request.files.get('backup_json')
     if not arquivo or not arquivo.filename:
         flash('Selecione o arquivo .json do backup.', 'danger')
-        return redirect(url_for('admin.dashboard') + '#sistema')
+        return redirect(url_for('admin.sistema'))
     try:
         data = json.loads(arquivo.read().decode('utf-8'))
         resumo = backup_service.importar_backup(data)
         flash(
             f"Backup restaurado: +{resumo['posts']} posts, +{resumo['links']} links, "
             f"+{resumo['turmas']} turmas, +{resumo['disciplinas']} disciplinas, "
-            f"+{resumo['chamados']} chamados ({resumo['ignorados']} itens já existiam).",
+            f"+{resumo['chamados']} chamados, +{resumo['anotacoes']} anotações "
+            f"({resumo['ignorados']} itens já existiam).",
             'success')
     except ValueError as e:
         db.session.rollback()
@@ -302,4 +435,4 @@ def backup_import():
     except Exception:
         db.session.rollback()
         flash('Arquivo de backup inválido ou corrompido — nada foi alterado.', 'danger')
-    return redirect(url_for('admin.dashboard') + '#sistema')
+    return redirect(url_for('admin.sistema'))

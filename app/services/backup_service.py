@@ -9,10 +9,10 @@ título+agendamento do post). Nada é sobrescrito nem apagado.
 from datetime import datetime
 
 from app.extensions import db
-from app.models import Turma, Disciplina, Link, Post, Chamado
+from app.models import Turma, Disciplina, Link, Post, Chamado, Anotacao
 
 FORMATO = 'portal-tac-backup'
-VERSAO = 2
+VERSAO = 3
 
 
 def _iso(dt):
@@ -53,10 +53,16 @@ def exportar_backup():
         } for p in Post.query.order_by(Post.id).all()],
         'chamados': [{
             'id': c.id, 'post_id': c.post_id, 'nome': c.nome, 'email': c.email,
-            'duvida': c.duvida, 'created_at': _iso(c.created_at),
+            'telefone': c.telefone, 'duvida': c.duvida, 'created_at': _iso(c.created_at),
             'resolvido': bool(c.resolvido), 'resposta_admin': c.resposta_admin,
             'respondido_at': _iso(c.respondido_at),
         } for c in Chamado.query.order_by(Chamado.id).all()],
+        'anotacoes': [{
+            'id': a.id, 'titulo': a.titulo, 'descricao': a.descricao,
+            'data': _iso(a.data), 'hora': a.hora.strftime('%H:%M') if a.hora else None,
+            'cor': a.cor, 'created_at': _iso(a.created_at),
+            'turmas': [t.slug for t in a.turmas],
+        } for a in Anotacao.query.order_by(Anotacao.id).all()],
     }
 
 
@@ -64,7 +70,8 @@ def importar_backup(data):
     if not isinstance(data, dict) or data.get('formato') != FORMATO:
         raise ValueError('O arquivo não parece ser um backup do Portal (formato inválido).')
 
-    resumo = {'turmas': 0, 'disciplinas': 0, 'links': 0, 'posts': 0, 'chamados': 0, 'ignorados': 0}
+    resumo = {'turmas': 0, 'disciplinas': 0, 'links': 0, 'posts': 0, 'chamados': 0,
+              'anotacoes': 0, 'ignorados': 0}
 
     # --- Turmas (chave natural: slug) ---
     turmas_por_slug = {t.slug: t for t in Turma.query.all()}
@@ -163,12 +170,35 @@ def importar_backup(data):
             continue
         db.session.add(Chamado(
             post=post, nome=cd.get('nome') or 'Estudante', email=cd['email'],
-            duvida=cd.get('duvida') or '', created_at=created,
+            telefone=cd.get('telefone'), duvida=cd.get('duvida') or '', created_at=created,
             resolvido=bool(cd.get('resolvido')),
             resposta_admin=cd.get('resposta_admin'),
             respondido_at=_dt(cd.get('respondido_at')),
         ))
         resumo['chamados'] += 1
+
+    # --- Anotações do calendário (chave natural: título + data) ---
+    anotacoes_existentes = {(a.titulo, a.data) for a in Anotacao.query.all()}
+    for ad in data.get('anotacoes', []):
+        titulo = (ad.get('titulo') or '').strip()
+        data_anot = _dt(ad.get('data'))
+        if not (titulo and data_anot):
+            continue
+        data_anot = data_anot.date() if isinstance(data_anot, datetime) else data_anot
+        if (titulo, data_anot) in anotacoes_existentes:
+            resumo['ignorados'] += 1
+            continue
+        a = Anotacao(titulo=titulo, descricao=ad.get('descricao'),
+                     data=data_anot, cor=ad.get('cor') or '#4F46E5',
+                     created_at=_dt(ad.get('created_at')) or datetime.now())
+        if ad.get('hora'):
+            a.hora = datetime.strptime(ad['hora'], '%H:%M').time()
+        for slug in ad.get('turmas', []):
+            if slug in turmas_por_slug:
+                a.turmas.append(turmas_por_slug[slug])
+        db.session.add(a)
+        anotacoes_existentes.add((titulo, data_anot))
+        resumo['anotacoes'] += 1
 
     db.session.commit()
     return resumo

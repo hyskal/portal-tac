@@ -2,24 +2,47 @@
  * Editor TipTap (via CDN esm.sh) para o formulário de posts.
  * Preenche o <textarea name="conteudo"> a cada alteração; se o CDN
  * falhar, o textarea continua visível e utilizável como fallback.
+ * Imagens: upload via /admin/api/upload-imagem (usa o storage configurado,
+ * com fallback local) ou inserção por URL.
  */
 const VERSAO = '2.6.6';
 const CDN = (pkg) => `https://esm.sh/@tiptap/${pkg}@${VERSAO}`;
+const URL_UPLOAD_IMAGEM = '/admin/api/upload-imagem';
 
 const textarea = document.getElementById('conteudo');
 const mount = document.getElementById('tiptapContent');
 const toolbar = document.getElementById('tiptapToolbar');
 const form = document.getElementById('postForm');
+const inputImagem = document.getElementById('editorImagemInput');
+
+function tokenCSRF() {
+    const campo = form ? form.querySelector('input[name="csrf_token"]') : null;
+    return campo ? campo.value : '';
+}
+
+async function enviarImagem(arquivo) {
+    const dados = new FormData();
+    dados.append('imagem', arquivo);
+    const resp = await fetch(URL_UPLOAD_IMAGEM, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': tokenCSRF() },
+        body: dados,
+    });
+    const json = await resp.json();
+    if (!resp.ok || !json.success) throw new Error(json.error || 'Falha no upload');
+    return json;
+}
 
 async function iniciarEditor() {
     if (!textarea || !mount || !toolbar) return;
 
-    const [core, starterKit, underline, link, placeholder] = await Promise.all([
+    const [core, starterKit, underline, link, placeholder, image] = await Promise.all([
         import(CDN('core')),
         import(CDN('starter-kit')),
         import(CDN('extension-underline')),
         import(CDN('extension-link')),
         import(CDN('extension-placeholder')),
+        import(CDN('extension-image')),
     ]);
 
     const editor = new core.Editor({
@@ -29,6 +52,7 @@ async function iniciarEditor() {
             underline.default,
             link.default.configure({ openOnClick: false, autolink: true }),
             placeholder.default.configure({ placeholder: 'Escreva o conteúdo da postagem...' }),
+            image.default.configure({ inline: false, allowBase64: false }),
         ],
         content: textarea.value || '',
         onUpdate({ editor }) {
@@ -53,6 +77,31 @@ async function iniciarEditor() {
         clear:       (c) => c.clearNodes().unsetAllMarks(),
     };
 
+    function inserirImagemPorUrl() {
+        const url = window.prompt('Endereço (URL) da imagem:');
+        if (url) editor.chain().focus().setImage({ src: url }).run();
+    }
+
+    if (inputImagem) {
+        inputImagem.addEventListener('change', async () => {
+            const arquivo = inputImagem.files[0];
+            inputImagem.value = '';
+            if (!arquivo) return;
+            const aviso = typeof showToast === 'function' ? showToast : () => {};
+            try {
+                aviso('Enviando imagem...', 'info');
+                const r = await enviarImagem(arquivo);
+                editor.chain().focus().setImage({ src: r.url }).run();
+                aviso(r.fallback ? 'API indisponível — imagem salva localmente.' : 'Imagem inserida! 🖼️',
+                      r.fallback ? 'warning' : 'success');
+            } catch (e) {
+                console.warn('Upload de imagem falhou:', e);
+                aviso('Upload falhou — você pode inserir por URL.', 'danger');
+                inserirImagemPorUrl();
+            }
+        });
+    }
+
     toolbar.querySelectorAll('button[data-cmd]').forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -67,6 +116,14 @@ async function iniciarEditor() {
                     const href = /^https?:\/\//i.test(url) ? url : 'https://' + url;
                     editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
                 }
+                return;
+            }
+            if (cmd === 'image') {
+                if (inputImagem) inputImagem.click(); else inserirImagemPorUrl();
+                return;
+            }
+            if (cmd === 'imageUrl') {
+                inserirImagemPorUrl();
                 return;
             }
             const acao = comandos[cmd];
@@ -86,6 +143,7 @@ async function iniciarEditor() {
         blockquote: () => editor.isActive('blockquote'),
         link: () => editor.isActive('link'),
         code: () => editor.isActive('code'),
+        image: () => editor.isActive('image'),
     };
     const atualizarToolbar = () => {
         toolbar.querySelectorAll('button[data-cmd]').forEach((btn) => {
