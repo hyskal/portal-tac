@@ -1,0 +1,6 @@
+{# Resultado do teste de conexão do storage — alvo HTMX (#storage-test-result) #}
+<div class="alert {{ 'alert-success' if ok else 'alert-danger' }} d-flex align-items-center gap-2 mb-0 mt-2 py-2"
+     style="border-radius: var(--radius-sm); font-size: .88rem;">
+    <i class="fas {{ 'fa-circle-check' if ok else 'fa-circle-xmark' }}"></i>
+    <span>{{ msg }}</span>
+</div>

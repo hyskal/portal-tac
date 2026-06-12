@@ -1,25 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, make_response
 from flask_login import login_required
 from datetime import datetime
+import json
 import os
-import unicodedata
-import re
 from app.extensions import db
 from app.models import Turma, Post, Link, Disciplina, Chamado
-from app.services.upload_service import upload_file_to_cloud
 from app.services.query_service import filtrar_posts
+from app.services import storage_service, backup_service
 from app.utils import is_htmx, hx_toast, hx_event
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-def limpar_nome_arquivo(nome):
-    base, _ = os.path.splitext(nome)
-    nfkd_form = unicodedata.normalize('NFKD', base)
-    nome_ascii = u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    nome_limpo = re.sub(r'[^a-zA-Z0-9]', '_', nome_ascii)
-    return re.sub(r'_{2,}', '_', nome_limpo)
-
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'doc', 'docx', 'xls', 'xlsx'}
 def arquivo_permitido(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -47,9 +39,17 @@ def dashboard():
     path_horario = os.path.join(current_app.root_path, 'static', 'uploads', 'horario_professor.png')
     tem_horario = os.path.exists(path_horario)
 
+    # Configurações de armazenamento (aba Sistema)
+    storage = {chave: storage_service.get_config(chave) for chave in (
+        'sml_base_url', 'sml_api_key', 'sml_projeto',
+        'supabase_url', 'supabase_key', 'supabase_bucket')}
+    storage['provider'] = storage_service.provider_ativo()
+    storage['cloudinary_env'] = bool(current_app.config.get('CLOUDINARY_CLOUD_NAME'))
+    storage['sml_base_url_padrao'] = storage_service.SML_BASE_URL_PADRAO
+
     return render_template('admin/dashboard.html', posts=posts, turmas=turmas, links=links,
                            disciplinas=disciplinas, chamados=chamados,
-                           chamados_pendentes=chamados_pendentes,
+                           chamados_pendentes=chamados_pendentes, storage=storage,
                            tem_horario=tem_horario, now=datetime.now())
 
 @admin_bp.route('/upload-horario', methods=['POST'])
@@ -89,8 +89,14 @@ def gerenciar_post(id=None):
         post.turmas = [Turma.query.get(int(tid)) for tid in request.form.getlist('turmas') if Turma.query.get(int(tid))]
         arq = request.files.get('arquivo')
         if arq and arq.filename != '' and arquivo_permitido(arq.filename):
-            d = upload_file_to_cloud(arq, custom_public_id=f"{limpar_nome_arquivo(arq.filename)}_{datetime.now().strftime('%d%m%Y')}")
-            if d: post.arquivo_url = d['url']; post.arquivo_formato = d['format']
+            d = storage_service.upload_anexo(arq)
+            if d:
+                post.arquivo_url = d['url']; post.arquivo_formato = d['format']
+                post.arquivo_public_id = d.get('public_id')
+                if d.get('fallback'):
+                    flash('A API de storage não respondeu — o anexo foi salvo localmente no servidor.', 'warning')
+            else:
+                flash('Não foi possível salvar o anexo. O post foi salvo sem o arquivo.', 'danger')
         db.session.commit()
         acao = request.form.get('acao_salvar')
         if acao == 'salvar_novo': return redirect(url_for('admin.gerenciar_post'))
@@ -227,3 +233,64 @@ def responder_chamado(id):
         return hx_toast(resp, f'Resposta registrada para {chamado.nome}. ✅', 'success')
     flash('Resposta registrada!', 'success')
     return redirect(url_for('admin.dashboard') + '#chamados')
+
+# --- SISTEMA: ARMAZENAMENTO DE ARQUIVOS ---
+
+@admin_bp.route('/storage', methods=['POST'])
+@login_required
+def salvar_storage():
+    provider = request.form.get('storage_provider', 'local')
+    if provider not in storage_service.PROVIDERS:
+        provider = 'local'
+    storage_service.set_config('storage_provider', provider)
+    for chave in ('sml_base_url', 'sml_api_key', 'sml_projeto',
+                  'supabase_url', 'supabase_key', 'supabase_bucket'):
+        if chave in request.form:
+            storage_service.set_config(chave, request.form.get(chave))
+    db.session.commit()
+    nomes = {'local': 'Salvamento local', 'sml': 'SML Storage API',
+             'supabase': 'Supabase Storage', 'cloudinary': 'Cloudinary'}
+    flash(f'Armazenamento configurado: {nomes[provider]}. Se a API falhar, os anexos caem no salvamento local.', 'success')
+    return redirect(url_for('admin.dashboard') + '#sistema')
+
+@admin_bp.route('/storage/testar', methods=['POST'])
+@login_required
+def testar_storage():
+    provider = request.form.get('storage_provider') or storage_service.provider_ativo()
+    ok, msg = storage_service.testar_conexao(provider, request.form)
+    return render_template('admin/partials/storage_test.html', ok=ok, msg=msg, provider=provider)
+
+# --- SISTEMA: BACKUP EM JSON ---
+
+@admin_bp.route('/backup/export')
+@login_required
+def backup_export():
+    payload = backup_service.exportar_backup()
+    resp = make_response(json.dumps(payload, ensure_ascii=False, indent=2))
+    resp.headers['Content-Type'] = 'application/json; charset=utf-8'
+    resp.headers['Content-Disposition'] = (
+        f'attachment; filename=portal-backup-{datetime.now().strftime("%Y%m%d-%H%M")}.json')
+    return resp
+
+@admin_bp.route('/backup/import', methods=['POST'])
+@login_required
+def backup_import():
+    arquivo = request.files.get('backup_json')
+    if not arquivo or not arquivo.filename:
+        flash('Selecione o arquivo .json do backup.', 'danger')
+        return redirect(url_for('admin.dashboard') + '#sistema')
+    try:
+        data = json.loads(arquivo.read().decode('utf-8'))
+        resumo = backup_service.importar_backup(data)
+        flash(
+            f"Backup restaurado: +{resumo['posts']} posts, +{resumo['links']} links, "
+            f"+{resumo['turmas']} turmas, +{resumo['disciplinas']} disciplinas, "
+            f"+{resumo['chamados']} chamados ({resumo['ignorados']} itens já existiam).",
+            'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+    except Exception:
+        db.session.rollback()
+        flash('Arquivo de backup inválido ou corrompido — nada foi alterado.', 'danger')
+    return redirect(url_for('admin.dashboard') + '#sistema')

@@ -297,6 +297,21 @@ body.htmx-em-voo #top-progress { opacity: 1; width: 70%; }
     border-radius: 50px; padding: 3px 9px; letter-spacing: .4px;
 }
 
+/* Seleção de provedor de storage (aba Sistema) */
+.provider-option {
+    display: flex; gap: 10px; align-items: flex-start;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px 14px; cursor: pointer; width: 100%; height: 100%;
+    background: var(--surface); transition: all .15s; margin: 0;
+    font-size: .9rem;
+}
+.provider-option:hover { border-color: var(--accent); }
+.provider-option.selecionado {
+    border-color: var(--accent); background: #EEF2FF;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .12);
+}
+.provider-option input { margin-top: 4px; accent-color: var(--accent); }
+
 /* Linha de chamado */
 .duvida-truncada { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chamado-respondido td { background: #F0FDF4; }

@@ -20,6 +20,8 @@ final.
 | **Curtidas** | `POST /api/post/<id>/like` sem login; cookie `liked_<id>` evita duplo like (segundo clique desfaz). |
 | **Chamados de dúvida** | Toggle "Permitir chamado de dúvida" por post. Aluno envia nome/e-mail/dúvida; professor responde na aba **Chamados** do dashboard (badge com pendentes). |
 | **Arquivar turma** | `POST /admin/turma/<id>/arquivar` alterna o estado. Turmas arquivadas somem da home e ficam acinzentadas no admin com badge "Arquivada". |
+| **Storage plugável** | Aba **Sistema** do dashboard: escolha onde os anexos são guardados — **Local** (pasta do servidor), **SML Storage API** (Firebase, fluxo getUploadUrl → PUT → confirmUpload), **Supabase Storage** (REST) ou **Cloudinary** (env). Se a API não responder, o upload **cai automaticamente no salvamento local** e o admin é avisado. Botão "Testar conexão" valida as credenciais antes de salvar. |
+| **Backup JSON** | Aba **Sistema**: exporta posts, biblioteca de links, turmas, disciplinas e chamados em um `.json`; a restauração só adiciona o que não existe (deduplicada por chaves naturais — nada é sobrescrito/apagado). |
 | **Toasts** | Feedback via header `HX-Trigger` (`showToast`) + flash messages convertidas em snackbar. |
 | **Redesign** | Tokens de design (índigo `#4F46E5`), fonte Inter, dashboard com sidebar fixa, formulário de post em 2 colunas com sidebar sticky, bottom-nav mobile, hero da turma. |
 
@@ -39,10 +41,26 @@ Variáveis de ambiente opcionais: `SECRET_KEY`, `DATABASE_URL`,
 `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`,
 `ADMIN_USERNAME`.
 
+## Armazenamento de anexos
+
+Configurável em **Admin → Sistema** (gravado no banco, tabela `configuracao`; variáveis
+de ambiente homônimas em maiúsculas servem de fallback):
+
+| Provedor | Campos | Observações |
+|---|---|---|
+| `local` (padrão) | — | salva em `app/static/uploads/posts/AAAA-MM/` |
+| `sml` | `sml_base_url`, `sml_api_key`, `sml_projeto` | SML Storage API (Firebase); limite 10 MB por arquivo |
+| `supabase` | `supabase_url`, `supabase_key` (service_role), `supabase_bucket` | o bucket precisa ser público para os alunos |
+| `cloudinary` | variáveis `CLOUDINARY_*` no ambiente | comportamento original mantido |
+
+Em qualquer provedor de API, falha de conexão ⇒ **fallback automático para salvamento
+local** (o post nunca fica sem anexo por instabilidade da API).
+
 ## Migrations
 
 - `e614d240e2fd` — baseline com o schema original
 - `4845a79d3a2b` — v2: `post.likes`, `post.permite_chamado`, `turma.arquivada`, tabela `chamado` (com `server_default` para backfill seguro)
+- `c1e17f34506b` — tabela `configuracao` (storage plugável)
 
 **Banco novo:** apenas `flask db upgrade`.
 **Banco existente (produção, criado antes das migrations):** marque a baseline e aplique só o delta v2:

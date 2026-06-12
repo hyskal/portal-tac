@@ -91,3 +91,8 @@ class Chamado(db.Model):
     resolvido = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     resposta_admin = db.Column(db.Text, nullable=True)
     respondido_at = db.Column(db.DateTime, nullable=True)
+
+class Configuracao(db.Model):
+    """Par chave/valor para configurações editáveis pelo admin (ex.: storage)."""
+    chave = db.Column(db.String(50), primary_key=True)
+    valor = db.Column(db.Text, nullable=True)

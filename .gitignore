@@ -11,3 +11,4 @@ instance/
 staticfiles
 media
 *.bak*
+app/static/uploads/posts/

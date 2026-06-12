@@ -119,8 +119,12 @@
                         <div class="bg-white p-3 rounded-4 shadow-sm me-3 text-center" style="width: 60px;">
                             {% if post.arquivo_formato == 'pdf' %}
                                 <i class="fas fa-file-pdf fa-xl text-danger"></i>
-                            {% elif post.arquivo_formato in ['jpg', 'png', 'jpeg'] %}
+                            {% elif post.arquivo_formato in ['jpg', 'png', 'jpeg', 'gif', 'webp'] %}
                                 <i class="fas fa-file-image fa-xl" style="color: var(--accent);"></i>
+                            {% elif post.arquivo_formato in ['doc', 'docx'] %}
+                                <i class="fas fa-file-word fa-xl" style="color: #2563EB;"></i>
+                            {% elif post.arquivo_formato in ['xls', 'xlsx'] %}
+                                <i class="fas fa-file-excel fa-xl" style="color: var(--success);"></i>
                             {% else %}
                                 <i class="fas fa-file-alt fa-xl text-secondary"></i>
                             {% endif %}

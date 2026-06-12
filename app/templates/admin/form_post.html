@@ -132,8 +132,9 @@
                     <div class="config-card">
                         <h6>Mídia</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Anexo (PDF/Img)</label>
-                            <input type="file" name="arquivo" class="form-control form-control-sm">
+                            <label class="form-label small fw-bold">Anexo (PDF / Imagem / Office)</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm"
+                                   accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx">
                             {% if post and post.arquivo_url %}
                                 <div class="mt-1 small text-success">
                                     <i class="fas fa-check-circle"></i> <a href="{{ post.arquivo_url }}" target="_blank">Ver atual</a>
